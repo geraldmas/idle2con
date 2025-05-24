@@ -33,7 +33,10 @@ let gameData = {
         // Future generator tiers can be added here
         // For example, a Tier 3 "2-Morphism Generator" would produce "Morphism Generators" (id: 2)
     ],
-    lastUpdate: Date.now()
+    lastUpdate: Date.now(),
+    debugFreePurchases: false, 
+    currentBuyMultiplier: 1,
+    buyMultiplierOptions: [1, 10, 100, 'MAX'],
 };
 
 // We can add functions to interact with this data later.
@@ -83,65 +86,136 @@ function formatNumber(num) {
 
 // (All existing JS code from previous steps should be above this)
 
+function calculateMaxBuy(generatorId) {
+    const generator = getGeneratorById(generatorId);
+    if (!generator || !generator.isUnlocked) return 0;
+
+    let currentResource;
+    if (generator.tier === 1 || generator.resourceCostName === gameData.baseCurrencyName) {
+        currentResource = gameData.baseCurrency;
+    } else {
+        // Placeholder for other resource types if they are introduced
+        // const resourceGen = gameData.generators.find(g => g.name === generator.resourceCostName);
+        // currentResource = resourceGen ? resourceGen.count : 0;
+        console.warn(`Max buy for resource ${generator.resourceCostName} not implemented yet.`);
+        return 0;
+    }
+
+    if (generator.costMultiplier === 1) { // Simple case: linear cost increase (or no increase per unit)
+        if (generator.currentCost <= 0) return Infinity; // Avoid division by zero if free
+        return Math.floor(currentResource / generator.currentCost);
+    }
+
+    // Cost increases geometrically: C, C*M, C*M^2, ... C*M^(n-1)
+    // Sum of costs for n items: S = C * (M^n - 1) / (M - 1)
+    // We need to find max n such that S <= currentResource
+    // M^n <= (currentResource * (M - 1) / C) + 1
+    // n * log(M) <= log((currentResource * (M - 1) / C) + 1)
+    // n <= log((currentResource * (M - 1) / C) + 1) / log(M)
+    
+    let numCanBuy = 0;
+    if (generator.currentCost <= 0 || generator.costMultiplier <= 0) { // Avoid issues with non-positive costs/multipliers
+         if (generator.currentCost === 0) return Infinity; // Can buy infinite if they are free
+         return 0; // Cannot buy if cost is negative and multiplier is not helping
+    }
+
+    // If cost is very low or resources very high, direct formula might have precision issues or overflow.
+    // Iterative approach is safer for game logic and handles integer counts correctly.
+    let tempCost = generator.currentCost;
+    let tempResource = currentResource;
+    let count = 0;
+    while (tempResource >= tempCost) {
+        tempResource -= tempCost;
+        tempCost *= generator.costMultiplier;
+        count++;
+        if (count > 2000) break; // Safety break for extreme scenarios to prevent freezing browser
+    }
+    numCanBuy = count;
+    return numCanBuy;
+}
+
 function buyGenerator(generatorId) {
     const generator = getGeneratorById(generatorId);
     if (!generator) {
         console.error(`Generator with ID ${generatorId} not found.`);
         return;
     }
-
     if (!generator.isUnlocked) {
         console.log(`${generator.name} is not unlocked yet.`);
-        // Optionally, provide user feedback on the UI
         return;
     }
 
-    let canAfford = false;
-    let costResourceName = "";
+    let numToBuy = 0;
+    if (gameData.currentBuyMultiplier === 'MAX') {
+        numToBuy = calculateMaxBuy(generatorId);
+    } else {
+        numToBuy = gameData.currentBuyMultiplier;
+    }
 
-    if (generator.tier === 1) { // Assuming Tier 1 (Object Generator) is bought with baseCurrency
-        costResourceName = gameData.baseCurrencyName;
-        if (gameData.baseCurrency >= generator.currentCost) {
-            gameData.baseCurrency -= generator.currentCost;
-            canAfford = true;
-        }
-    } else if (generator.resourceCostName) { // Higher tiers bought with specified resources
-        costResourceName = generator.resourceCostName;
-        // For now, we only have "Objects" (baseCurrency) as a spendable resource for higher tiers
-        // This part needs to be more generic if generators can cost other generators directly (not planned yet)
-        if (generator.resourceCostName === gameData.baseCurrencyName) {
-            if (gameData.baseCurrency >= generator.currentCost) {
-                gameData.baseCurrency -= generator.currentCost;
-                canAfford = true;
+    if (numToBuy === 0) {
+        console.log("Cannot buy 0 units.");
+        return;
+    }
+    if (numToBuy === Infinity && generator.currentCost === 0 && gameData.debugFreePurchases) {
+         // Handle buying a large number of free items in debug mode
+         numToBuy = 1000; // Buy a large batch, e.g. 1000
+         console.log("Buying a large batch of free generators in debug mode.");
+    } else if (numToBuy === Infinity) {
+        console.log("Cannot determine a finite max buy amount for free items, limiting to 1000.");
+        numToBuy = 1000; // Or handle as an error / smaller amount
+    }
+
+
+    let totalUnitsBought = 0;
+    let totalCostPaid = 0; // For potential summary, not strictly needed by current logic
+
+    for (let i = 0; i < numToBuy; i++) {
+        let currentUnitCost = generator.currentCost;
+        let canAffordThisUnit = false;
+        let resourceToSpend = null;
+
+        if (generator.tier === 1 || generator.resourceCostName === gameData.baseCurrencyName) {
+            resourceToSpend = 'baseCurrency';
+            if (gameData.baseCurrency >= currentUnitCost) {
+                canAffordThisUnit = true;
             }
+        } // Add other resource checks here if needed
+
+        if (gameData.debugFreePurchases) {
+            canAffordThisUnit = true;
+        }
+
+        if (canAffordThisUnit) {
+            if (!gameData.debugFreePurchases) {
+                if (resourceToSpend === 'baseCurrency') {
+                    gameData.baseCurrency -= currentUnitCost;
+                }
+                // Deduct other resources if needed
+            }
+            totalCostPaid += gameData.debugFreePurchases ? 0 : currentUnitCost;
+            generator.count++;
+            generator.currentCost *= generator.costMultiplier; // Escalate cost for the *next* unit
+            totalUnitsBought++;
         } else {
-            // Placeholder for spending other types of resources (e.g., if a generator cost N-1 generators directly)
-            // const resourceGenerator = gameData.generators.find(g => g.name === generator.resourceCostName);
-            // if (resourceGenerator && resourceGenerator.count >= generator.currentCost) {
-            //     resourceGenerator.count -= generator.currentCost;
-            //     canAfford = true;
-            // }
-            console.warn(`Cost resource ${generator.resourceCostName} not handled yet for purchasing ${generator.name}`);
+            // Not enough resources for this unit in the batch
+            if (i === 0) { // Failed to buy even the first unit
+                 console.log(`Not enough resources to buy ${generator.name}. Needed: ${currentUnitCost.toFixed(2)}`);
+            } else {
+                 console.log(`Bought ${totalUnitsBought} ${generator.name}(s) before running out of resources.`);
+            }
+            break; // Stop trying to buy more in this batch
         }
     }
 
-    if (canAfford) {
-        generator.count++;
-        generator.currentCost *= generator.costMultiplier;
-        console.log(`Bought 1 ${generator.name}. New count: ${generator.count}, New cost: ${generator.currentCost.toFixed(2)}`);
-        
-        // Basic unlocking logic: Unlock Tier 2 after buying/owning some Tier 1 generators
+    if (totalUnitsBought > 0) {
+        console.log(`Bought ${totalUnitsBought} ${generator.name}(s).`);
+        // Basic unlocking logic (keep as is or adapt if needed)
         if (generator.id === 1 && gameData.generators[0].count >= 5 && !getGeneratorById(2).isUnlocked) {
             const tier2 = getGeneratorById(2);
-            tier2.isUnlocked = true;
-            console.log(`${tier2.name} Unlocked!`);
-            // Potentially show a message to the user on the UI
+            if(tier2) tier2.isUnlocked = true; // Check if tier2 exists
+            console.log(`${getGeneratorById(2)?.name} Unlocked!`);
         }
-
-        updateUI(); // Update UI immediately after purchase
-    } else {
-        console.log(`Not enough ${costResourceName} to buy ${generator.name}. Needed: ${generator.currentCost.toFixed(2)}`);
-        // Optionally, provide user feedback on the UI (e.g., disable button, show message)
+        updateUI();
     }
 }
 
@@ -234,9 +308,45 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error("Cannot attach delegated event listener: generators-section not found.");
     }
+
+    // Add Event Listener for the Toggle Button
+    const toggleFreePurchasesButton = document.getElementById('toggle-free-purchases');
+    if (toggleFreePurchasesButton) {
+        toggleFreePurchasesButton.addEventListener('click', () => {
+            gameData.debugFreePurchases = !gameData.debugFreePurchases;
+            toggleFreePurchasesButton.textContent = `Free Purchases: ${gameData.debugFreePurchases ? 'ON' : 'OFF'}`;
+            toggleFreePurchasesButton.style.backgroundColor = gameData.debugFreePurchases ? 'var(--color-secondary-accent)' : '#aaa'; // Example style change
+            toggleFreePurchasesButton.style.color = gameData.debugFreePurchases ? 'white' : 'black';
+
+            console.log(`Debug Free Purchases: ${gameData.debugFreePurchases}`);
+        });
+        // Initialize button style based on initial debug state
+        toggleFreePurchasesButton.style.backgroundColor = gameData.debugFreePurchases ? 'var(--color-secondary-accent)' : '#aaa';
+        toggleFreePurchasesButton.style.color = gameData.debugFreePurchases ? 'white' : 'black';
+    }
+
+    // Add Event Listeners for Multiplier Buttons
+    const multiplierButtons = document.querySelectorAll('.multiplier-button');
+    multiplierButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const multiplierValue = button.dataset.multiplier;
+            if (multiplierValue === 'MAX') {
+                gameData.currentBuyMultiplier = 'MAX';
+            } else {
+                gameData.currentBuyMultiplier = parseInt(multiplierValue, 10);
+            }
+
+            // Update active class on buttons
+            multiplierButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            console.log(`Current Buy Multiplier set to: ${gameData.currentBuyMultiplier}`);
+            updateUI(); // Update UI to reflect any changes if needed (e.g. if costs displayed were per batch)
+        });
+    });
 });
 
-console.log("Event listeners adjusted for dynamic buttons using event delegation.");
+console.log("Event listeners updated for multipliers, debug toggle, and dynamic buttons.");
 
 
 // (Existing gameData, renderGeneratorElements, etc. should be above this)
