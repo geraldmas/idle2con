@@ -42,6 +42,19 @@ let gameData = {
             currentCost: new Decimal(1e9),
             costMultiplier: new Decimal(1.25),
             isUnlocked: false 
+        },
+        {
+            id: 4,
+            name: "Functor Generator",
+            tier: 4,
+            count: new Decimal(0),
+            productionPerSecond: new Decimal(1),
+            producesGeneratorId: 3, // Produces 2-Morphism Generators
+            resourceCostName: "Objects", // Costs Base Currency
+            baseCost: new Decimal("1e15"), // 1 Quadrillion Objects
+            currentCost: new Decimal("1e15"),
+            costMultiplier: new Decimal(1.30),
+            isUnlocked: false
         }
         // Future generator tiers can be added here
     ],
@@ -298,7 +311,62 @@ function checkUnlocks() {
             console.log(tier3Gen.name + " Unlocked!");
         }
     }
+
+    // Unlock Tier 4 Generator (Functor Generator)
+    const tier4Gen = getGeneratorById(4);
+    if (tier4Gen && !tier4Gen.isUnlocked) {
+        const tier3GenForUnlock = getGeneratorById(3); 
+        if (tier3GenForUnlock && tier3GenForUnlock.count.gte(25)) { // Condition: 25 2-Morphism Generators
+            tier4Gen.isUnlocked = true;
+            console.log(tier4Gen.name + " Unlocked!");
+        }
+    }
     // Future unlock conditions can be added here
+}
+
+function calculateOfflineProduction(timeDeltaSeconds) {
+    // console.log(`calculateOfflineProduction called with timeDeltaSeconds: ${timeDeltaSeconds.toString()}`);
+    if (timeDeltaSeconds.isNegative() || timeDeltaSeconds.isZero()) return;
+
+    // Create a snapshot of initial counts for logging or more complex calcs if needed later
+    const initialCounts = { baseCurrency: gameData.baseCurrency };
+    gameData.generators.forEach(gen => {
+        initialCounts[gen.id] = gen.count;
+    });
+
+    for (let i = gameData.generators.length - 1; i >= 0; i--) {
+        const generator = gameData.generators[i];
+        if (generator.count.gt(0)) { // Only consider generators the player owns
+            let totalProduction = generator.count.mul(generator.productionPerSecond).mul(timeDeltaSeconds);
+            // console.log(`Offline Calc: ${generator.name} (Count: ${formatNumber(generator.count)}) would produce ${formatNumber(totalProduction)} over ${timeDeltaSeconds.toFixed(0)}s`);
+
+            if (totalProduction.gt(0)) {
+                if (generator.producesGeneratorId) {
+                    const targetGenerator = getGeneratorById(generator.producesGeneratorId);
+                    if (targetGenerator) {
+                        // const oldTargetCount = targetGenerator.count;
+                        targetGenerator.count = targetGenerator.count.add(totalProduction);
+                        // console.log(`Offline: ${targetGenerator.name} count updated from ${formatNumber(oldTargetCount)} to ${formatNumber(targetGenerator.count)}`);
+                    }
+                } else if (generator.producesResource === "baseCurrency") {
+                    // const oldCurrency = gameData.baseCurrency;
+                    gameData.baseCurrency = gameData.baseCurrency.add(totalProduction);
+                    // console.log(`Offline: Base currency updated from ${formatNumber(oldCurrency)} to ${formatNumber(gameData.baseCurrency)}`);
+                }
+            }
+        }
+    }
+    // Log overall changes
+    const currencyEarned = gameData.baseCurrency.sub(initialCounts.baseCurrency);
+    if (currencyEarned.gt(0)) {
+         console.log(`Base currency earned offline: ${formatNumber(currencyEarned)}`);
+    }
+    gameData.generators.forEach(gen => {
+        const producedOffline = gen.count.sub(initialCounts[gen.id]);
+        if (producedOffline.gt(0)) {
+            console.log(`${gen.name} produced offline: ${formatNumber(producedOffline)}`);
+        }
+    });
 }
 
 function calculateMaxBuy(generatorId) {
@@ -581,19 +649,46 @@ function gameLoop() {
 
 // Ensure the interval is correctly set up.
 let gameLoopInterval; // Define gameLoopInterval in a scope accessible for clearing
-if (typeof gameLoopInterval !== 'undefined') {
-    clearInterval(gameLoopInterval);
-}
-gameLoopInterval = setInterval(gameLoop, 100); // Run game loop 10 times per second
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadGame(); // Load game data first
-    renderGeneratorElements(); // Then render elements based on loaded/default data
-    updateUI(); // Update UI with the potentially loaded data
+    loadGame(); // Load game data first - this sets gameData.lastUpdate from save or to Date.now() if no save
+    renderGeneratorElements(); // Render elements based on loaded/default data
+
+    // --- Offline Progress Calculation ---
+    const now = Date.now();
+    // gameData.lastUpdate should be from the loaded game data or from a fresh start via loadGame()
+    let timeDeltaOfflineInSeconds = new Decimal(now - gameData.lastUpdate).div(1000);
+
+    if (timeDeltaOfflineInSeconds.lt(1) || timeDeltaOfflineInSeconds.isNegative()) {
+        // If negative, it implies system time changed or an issue with saved lastUpdate.
+        // Treat as no significant offline time.
+        console.log("Offline time less than 1 second or negative, no significant progress to calculate.");
+    } else {
+        // Optional: Cap offline time
+        // const maxOfflineTimeSeconds = new Decimal(7 * 24 * 60 * 60); // 1 week
+        // if (timeDeltaOfflineInSeconds.gt(maxOfflineTimeSeconds)) {
+        //     console.warn(`Offline time was ${timeDeltaOfflineInSeconds.toFixed(0)}s, capped to ${maxOfflineTimeSeconds.toFixed(0)}s.`);
+        //     timeDeltaOfflineInSeconds = maxOfflineTimeSeconds;
+        // }
+        console.log(`Calculating offline progress for ${timeDeltaOfflineInSeconds.toFixed(0)} seconds.`);
+        calculateOfflineProduction(timeDeltaOfflineInSeconds);
+        checkUnlocks(); // Check if any new generators were unlocked due to offline production
+        console.log("Offline progress calculation complete.");
+    }
+    
+    gameData.lastUpdate = now; // Set lastUpdate to current time AFTER offline calculations and BEFORE game loop starts
+    
+    updateUI(); // Update UI with the potentially loaded and offline-progressed data
+
+    // Setup game loop
+    if (typeof gameLoopInterval !== 'undefined') { // Clear any existing interval (e.g. from HMR)
+        clearInterval(gameLoopInterval);
+    }
+    gameLoopInterval = setInterval(gameLoop, 100); // Run game loop 10 times per second
 
     // Setup autosave
     setInterval(saveGame, 15000); // Save every 15 seconds
-    // console.log("Autosave interval (15s) set up.");
+    console.log("Autosave interval (15s) set up.");
 
     const generatorsSection = document.getElementById('generators-section');
     if (generatorsSection) {

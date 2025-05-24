@@ -5,19 +5,21 @@ This document outlines future development tasks and ideas for the chaotic idle g
 ## I. Core Gameplay Enhancements
 
 *   **BigNumber Implementation:**
-    *   [ ] Integrate a robust BigNumber library (e.g., `break_infinity.js`, `decimal.js`) to handle very large numbers that will inevitably arise in an idle game. This is crucial for long-term playability.
-    *   [ ] Refactor existing calculations (`baseCurrency`, generator `count`, `cost`, `production`) to use the chosen BigNumber library.
+    *   [x] Integrate a robust BigNumber library (e.g., `break_infinity.js`, `decimal.js`) to handle very large numbers that will inevitably arise in an idle game. This is crucial for long-term playability.
+    *   [x] Refactor existing calculations (`baseCurrency`, generator `count`, `cost`, `production`) to use the chosen BigNumber library.
 *   **Saving and Loading:**
-    *   [ ] Implement game state saving to LocalStorage.
-    *   [ ] Implement loading game state from LocalStorage on page load.
+    *   [x] Implement game state saving to LocalStorage.
+    *   [x] Implement loading game state from LocalStorage on page load.
     *   [ ] Consider adding manual save/export and import options (e.g., as a text string).
 *   **More Generator Tiers:**
-    *   [ ] Design and implement additional generator tiers (e.g., Tier 3: "2-Morphisms", Tier 4: "Functors", etc.).
+    *   [~] Design and implement additional generator tiers (Tiers 1-3 implemented).
     *   [ ] Ensure the "N produces N-1" mechanic scales appropriately.
     *   [ ] Balance costs and production rates for new tiers.
+    *   [x] Tier 3: "2-Morphisms" implemented.
 *   **Unlock Mechanics Refinement:**
-    *   [ ] Implement more diverse unlock conditions for new generators or features (e.g., reaching a certain amount of a specific resource, owning X of multiple generator types, total time played).
+    *   [~] Implement more diverse unlock conditions for new generators or features (e.g., reaching a certain amount of a specific resource, owning X of multiple generator types, total time played).
     *   [ ] Provide clear UI feedback for locked elements, showing unlock requirements.
+    *   [x] Unlock conditions for Tiers 2 and 3 implemented.
 *   **Offline Progress:**
     *   [ ] Calculate progress made while the game was closed (based on `lastUpdate` timestamp).
     *   [ ] Present offline gains to the player upon reloading the game.
@@ -41,9 +43,9 @@ This document outlines future development tasks and ideas for the chaotic idle g
 ## III. UI/UX Improvements
 
 *   **Dynamic Generator Display:**
-    *   [ ] Modify `script.js` to dynamically create HTML elements for generators from the `gameData.generators` array instead of having them hardcoded in `index.html`. This makes adding new tiers much easier.
+    *   [x] Modify `script.js` to dynamically create HTML elements for generators from the `gameData.generators` array instead of having them hardcoded in `index.html`. This makes adding new tiers much easier.
 *   **Number Formatting:**
-    *   [ ] Improve `formatNumber()` to use standard abbreviations for large numbers (K, M, B, T, aa, ab, etc.) or scientific notation.
+    *   [x] Improve `formatNumber()` to use standard abbreviations for large numbers (K, M, B, T, aa, ab, etc.) or scientific notation.
 *   **Notifications/Feedback:**
     *   [ ] Add a dedicated notification area for events like unlocking new tiers, affording new upgrades, or "not enough resources."
 *   **Cost Indicators:**
