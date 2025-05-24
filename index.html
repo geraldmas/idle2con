@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaotic Idle Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Chaotic Idle Game</h1>
+    </header>
+
+    <main id="game-container">
+        <section id="generators-section">
+            <h2>Generators</h2>
+            <!-- Generator tiers will be dynamically added here by JavaScript -->
+            <div id="generator-tier-1" class="generator-tier">
+                <h3>Tier 1: <span class="generator-name">Objects</span></h3>
+                <p>Count: <span id="tier-1-count">0</span></p>
+                <p>Producing: <span id="tier-1-production">0</span>/s <span class="produces-what"></span></p>
+                <button id="buy-tier-1">Buy Object Generator (Cost: <span id="tier-1-cost">10</span> Base Currency)</button> 
+            </div>
+             <div id="generator-tier-2" class="generator-tier">
+                <h3>Tier 2: <span class="generator-name">Morphisms</span></h3>
+                <p>Count: <span id="tier-2-count">0</span></p>
+                <p>Producing: <span id="tier-2-production">0</span>/s <span class="produces-what">Objects</span></p>
+                <button id="buy-tier-2">Buy Morphism Generator (Cost: <span id="tier-2-cost">100</span> Objects)</button>
+            </div>
+        </section>
+
+        <section id="stats-section">
+            <h2>Stats</h2>
+            <p>Base Currency (Objects): <span id="base-currency-count">0</span></p>
+        </section>
+        
+        <section id="prestige-placeholder">
+            <h2>Prestige</h2>
+            <p>Coming soon...</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>Game In Development</p>
+    </footer>
+
+    <script src="script.js" defer></script>
+</body>
+</html>

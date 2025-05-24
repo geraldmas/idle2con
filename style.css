@@ -1,0 +1,121 @@
+/* Basic Reset & Body Styling */
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #333;
+    color: #fff;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+}
+
+main#game-container {
+    width: 90%;
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+section h2 {
+    margin-top: 0;
+    color: #555;
+}
+
+/* Generator Styling */
+.generator-tier {
+    background-color: #e9e9e9;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.generator-tier h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #444;
+}
+
+.generator-tier p {
+    margin: 5px 0;
+}
+
+.generator-tier button {
+    padding: 8px 12px;
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.generator-tier button:hover {
+    background-color: #4cae4c;
+}
+
+/* Footer Styling */
+footer {
+    text-align: center;
+    padding: 10px 0;
+    margin-top: 30px;
+    font-size: 0.9em;
+    color: #777;
+}
+
+/* Basic Responsiveness */
+@media (max-width: 600px) {
+    main#game-container {
+        width: 95%;
+        padding: 10px;
+    }
+
+    header h1 {
+        font-size: 1.5em;
+    }
+
+    section h2 {
+        font-size: 1.2em;
+    }
+
+    .generator-tier button {
+        width: 100%;
+        padding: 10px;
+    }
+}
+
+/* (Existing CSS rules from previous step should be above this) */
+
+.generator-tier.locked {
+    opacity: 0.6;
+    border-style: dashed;
+    background-color: #d0d0d0; /* Slightly darker background for locked state */
+}
+
+.generator-tier.locked button {
+    background-color: #aaa; /* Grey out button */
+    color: #555;
+    cursor: not-allowed; /* Indicate button is not clickable */
+}
+
+.generator-tier.locked button:hover {
+    background-color: #aaa; /* Keep hover state same as normal locked state */
+}
