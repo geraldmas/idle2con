@@ -2,7 +2,7 @@
 
 // Main game data object
 let gameData = {
-    baseCurrency: 0, // This will be our "Objects"
+    baseCurrency: 20, // This will be our "Objects"
     baseCurrencyName: "Objects",
     generators: [
         {
@@ -145,40 +145,105 @@ function buyGenerator(generatorId) {
     }
 }
 
-// Add Event Listeners to Buy Buttons
+// (Existing gameData, helper functions, game loop etc. should be above this)
+
+function renderGeneratorElements() {
+    const generatorsSection = document.getElementById('generators-section');
+    if (!generatorsSection) {
+        console.error("Generator section not found in HTML!");
+        return;
+    }
+    
+    // Preserve the H2 title, clear everything else
+    const h2Title = generatorsSection.querySelector('h2');
+    generatorsSection.innerHTML = ''; // Clear all content
+    if (h2Title) {
+        generatorsSection.appendChild(h2Title); // Re-add H2 if it existed
+    }
+
+    gameData.generators.forEach(generator => {
+        // Create the main container for the generator tier
+        const tierDiv = document.createElement('div');
+        tierDiv.className = 'generator-tier';
+        tierDiv.id = `generator-tier-${generator.id}`; // Unique ID for the tier container
+
+        // Generator Name (Title)
+        const title = document.createElement('h3');
+        title.innerHTML = `Tier ${generator.tier}: <span class="generator-name" id="gen-name-${generator.id}">${generator.name}</span>`;
+        tierDiv.appendChild(title);
+
+        // Count Display
+        const countP = document.createElement('p');
+        countP.innerHTML = `Count: <span id="gen-count-${generator.id}">${formatNumber(generator.count)}</span>`;
+        tierDiv.appendChild(countP);
+
+        // Production Display
+        const productionP = document.createElement('p');
+        productionP.innerHTML = `Producing: <span id="gen-production-${generator.id}">0</span>/s <span class="produces-what" id="gen-produces-${generator.id}"></span>`;
+        tierDiv.appendChild(productionP);
+
+        // Buy Button
+        const buyButton = document.createElement('button');
+        buyButton.id = `buy-gen-${generator.id}`;
+        buyButton.className = 'buy-generator-button'; // Add a common class for event delegation
+        // Initial button text will be set by updateUI
+        buyButton.innerHTML = `Buy ${generator.name} (Cost: <span id="gen-cost-${generator.id}">0</span> <span id="gen-cost-resource-${generator.id}"></span>)`;
+        tierDiv.appendChild(buyButton);
+        
+        generatorsSection.appendChild(tierDiv);
+    });
+    console.log("Dynamic generator elements rendered.");
+}
+
+// (Existing gameData, renderGeneratorElements, updateUI, etc. should be above this)
+
+// The buyGenerator function itself should remain as is, as it takes an ID.
+
+// Modify the DOMContentLoaded event listener:
 document.addEventListener('DOMContentLoaded', () => {
-    // Ensure the DOM is fully loaded before trying to attach listeners
+    // Remove the old, direct event listener attachments and the temporary cloning fix.
+    // These lines should be deleted:
+    // const oldBuyTier1Button = document.getElementById('buy-tier-1');
+    // if (oldBuyTier1Button) { ... }
+    // const oldBuyTier2Button = document.getElementById('buy-tier-2');
+    // if (oldBuyTier2Button) { ... }
 
-    const buyTier1Button = document.getElementById('buy-tier-1');
-    if (buyTier1Button) {
-        buyTier1Button.addEventListener('click', () => buyGenerator(1)); // Assuming Tier 1 generator has id: 1
-    } else {
-        console.error("Button with ID 'buy-tier-1' not found.");
-    }
+    renderGeneratorElements(); // Create the generator HTML structure
+    updateUI(); // Initial UI update
 
-    const buyTier2Button = document.getElementById('buy-tier-2');
-    if (buyTier2Button) {
-        buyTier2Button.addEventListener('click', () => buyGenerator(2)); // Assuming Tier 2 generator has id: 2
+    // Add event delegation for buy buttons
+    const generatorsSection = document.getElementById('generators-section');
+    if (generatorsSection) {
+        generatorsSection.addEventListener('click', (event) => {
+            // Check if the clicked element or its parent is a buy button
+            const buyButton = event.target.closest('.buy-generator-button');
+            
+            if (buyButton && buyButton.id) {
+                // Extract generator ID from button ID (e.g., "buy-gen-1" -> "1")
+                const parts = buyButton.id.split('-'); // ["buy", "gen", "1"]
+                if (parts.length === 3 && parts[0] === 'buy' && parts[1] === 'gen') {
+                    const generatorId = parseInt(parts[2], 10);
+                    if (!isNaN(generatorId)) {
+                        buyGenerator(generatorId);
+                    } else {
+                        console.error("Could not parse generator ID from button:", buyButton.id);
+                    }
+                }
+            }
+        });
     } else {
-        console.error("Button with ID 'buy-tier-2' not found.");
+        console.error("Cannot attach delegated event listener: generators-section not found.");
     }
-    
-    // Initial UI setup for button states (e.g., disable Tier 2 if not unlocked)
-    // This should ideally be part of updateUI more robustly
-    const tier2Gen = getGeneratorById(2);
-    if (tier2Gen && !tier2Gen.isUnlocked && buyTier2Button) {
-         buyTier2Button.disabled = true; // Disable if not unlocked
-         // Also update the UI to reflect this, e.g. by hiding or styling differently
-         const tier2Element = document.getElementById('generator-tier-2');
-         if(tier2Element) tier2Element.classList.add('locked'); // Add a class to style locked tiers
-    }
-    
-    // Re-run updateUI on DOMContentLoaded to ensure costs and states are fresh if page was reloaded.
-    updateUI();
 });
 
-// Small modification to updateUI to handle locked state styling
-// This is a bit of a patch; ideally, dynamic element creation or more robust class handling in updateUI is better.
+console.log("Event listeners adjusted for dynamic buttons using event delegation.");
+
+
+// (Existing gameData, renderGeneratorElements, etc. should be above this)
+
+// Ensure formatNumber and getGeneratorById are defined before updateUI
+// (They should be from previous script versions)
+
 function updateUI() {
     // Update Base Currency
     const baseCurrencyElement = document.getElementById('base-currency-count');
@@ -188,44 +253,50 @@ function updateUI() {
 
     // Update Generators
     gameData.generators.forEach(generator => {
-        const tierElement = document.getElementById(`generator-tier-${generator.tier}`);
+        const tierElement = document.getElementById(`generator-tier-${generator.id}`); // Used for .locked class
         if (!tierElement) {
-            return; // Skip if element not found
+            // This might happen if a generator is added to gameData but not yet rendered.
+            // Or if called before renderGeneratorElements completes (unlikely with current setup).
+            // console.warn(`UI element for generator tier ID ${generator.id} not found.`);
+            return; // Skip this generator if its main container isn't found
         }
 
-        const countElement = document.getElementById(`tier-${generator.tier}-count`);
-        const productionElement = document.getElementById(`tier-${generator.tier}-production`);
-        const costElement = document.getElementById(`tier-${generator.tier}-cost`);
-        const producesWhatElement = tierElement.querySelector('.produces-what');
-        const buyButton = document.getElementById(`buy-tier-${generator.tier}`);
-
+        const countElement = document.getElementById(`gen-count-${generator.id}`);
+        const productionElement = document.getElementById(`gen-production-${generator.id}`);
+        const producesWhatElement = document.getElementById(`gen-produces-${generator.id}`); // For the "produces what" text
+        const buyButton = document.getElementById(`buy-gen-${generator.id}`);
+        const costElement = document.getElementById(`gen-cost-${generator.id}`); // Span inside the button for cost number
+        const costResourceElement = document.getElementById(`gen-cost-resource-${generator.id}`); // Span for cost resource name
 
         if (countElement) countElement.textContent = formatNumber(generator.count);
         
-        if (productionElement) {
+        if (productionElement && producesWhatElement) {
             let productionText = "";
+            let producesWhatText = "";
             if (generator.producesResource === "baseCurrency") {
                 productionText = formatNumber(generator.count * generator.productionPerSecond);
-                if (producesWhatElement) producesWhatElement.textContent = gameData.baseCurrencyName;
+                producesWhatText = gameData.baseCurrencyName;
             } else if (generator.producesGeneratorId) {
                 const targetGen = getGeneratorById(generator.producesGeneratorId);
                 if (targetGen) {
                     productionText = formatNumber(generator.count * generator.productionPerSecond);
-                    if (producesWhatElement) producesWhatElement.textContent = targetGen.name + "s";
+                    producesWhatText = targetGen.name + "s"; // Pluralize
                 }
             }
             productionElement.textContent = productionText;
+            producesWhatElement.textContent = producesWhatText;
         }
 
-        if (costElement) {
-            let costResourceName = "";
-             if (generator.tier === 1) { 
-                 costResourceName = gameData.baseCurrencyName;
-            } else if (generator.resourceCostName) { 
-                 costResourceName = generator.resourceCostName;
-            }
-            // This line is to update the span inside the button, not the button's direct text content for cost
-            costElement.textContent = `${formatNumber(generator.currentCost)} ${costResourceName}`;
+        let costResourceName = ""; // Declare here to use in button innerHTML update
+        if (generator.tier === 1) { 
+             costResourceName = gameData.baseCurrencyName;
+        } else if (generator.resourceCostName) { 
+             costResourceName = generator.resourceCostName;
+        }
+
+        if (costElement && costResourceElement) {
+            costElement.textContent = formatNumber(generator.currentCost);
+            costResourceElement.textContent = costResourceName;
         }
         
         // Handle unlocking and button state
@@ -233,28 +304,23 @@ function updateUI() {
             if (!generator.isUnlocked) {
                 buyButton.disabled = true;
                 tierElement.classList.add('locked');
-                 // Optional: change button text or style for locked state
-                buyButton.textContent = "Locked";
+                buyButton.textContent = "Locked"; // Simpler text for locked button
             } else {
                 buyButton.disabled = false;
                 tierElement.classList.remove('locked');
-                // Restore button text if it was changed, ensuring the span for cost is correctly rebuilt
-                let currentCostResourceName = "";
-                if (generator.tier === 1) { 
-                    currentCostResourceName = gameData.baseCurrencyName;
-                } else if (generator.resourceCostName) { 
-                    currentCostResourceName = generator.resourceCostName;
-                }
-                buyButton.innerHTML = `Buy ${generator.name} (Cost: <span id="tier-${generator.tier}-cost">${formatNumber(generator.currentCost)} ${currentCostResourceName || ''}</span>)`;
+                // Restore button text to include dynamic cost and resource name
+                // Ensure these spans exist from renderGeneratorElements
+                const costSpanId = `gen-cost-${generator.id}`;
+                const resourceSpanId = `gen-cost-resource-${generator.id}`;
+                buyButton.innerHTML = `Buy ${generator.name} (Cost: <span id="${costSpanId}">${formatNumber(generator.currentCost)}</span> <span id="${resourceSpanId}">${costResourceName || gameData.baseCurrencyName}</span>)`;
             }
         }
     });
 }
-// Add some CSS for the .locked class in style.css if you want visual feedback
-// e.g., in style.css:
-// .generator-tier.locked { opacity: 0.5; border-style: dashed; }
-// .generator-tier.locked button { background-color: #aaa; }
 
-console.log("Generator buying logic and event listeners initialized.");
-// Initial UI update to reflect starting state correctly, including button states.
-updateUI();
+// Ensure the gameLoop calls the refactored updateUI
+// (The gameLoop function definition itself might not need to change if it already calls updateUI())
+// And ensure updateUI is called once after renderGeneratorElements in DOMContentLoaded
+// (This should already be the case from the previous step)
+
+console.log("updateUI function refactored for dynamic element IDs.");
