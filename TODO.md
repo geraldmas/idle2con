@@ -12,33 +12,25 @@ This document outlines future development tasks and ideas for the chaotic idle g
     *   [x] Implement loading game state from LocalStorage on page load.
     *   [ ] Consider adding manual save/export and import options (e.g., as a text string).
 *   **More Generator Tiers:**
-    *   [~] Design and implement additional generator tiers (Tiers 1-3 implemented).
+    *   [~] Design and implement additional generator tiers (Tiers 1-4 implemented).
     *   [ ] Ensure the "N produces N-1" mechanic scales appropriately.
     *   [ ] Balance costs and production rates for new tiers.
-    *   [x] Tier 3: "2-Morphisms" implemented.
+    *   [x] Tier 1-4 names and roles to be updated for new theme.
 *   **Unlock Mechanics Refinement:**
     *   [~] Implement more diverse unlock conditions for new generators or features (e.g., reaching a certain amount of a specific resource, owning X of multiple generator types, total time played).
     *   [ ] Provide clear UI feedback for locked elements, showing unlock requirements.
-    *   [x] Unlock conditions for Tiers 2 and 3 implemented.
+    *   [x] Unlock conditions for Tiers 2, 3, and 4 implemented. (Assuming Tier 4 unlock was done)
 *   **Offline Progress:**
-    *   [ ] Calculate progress made while the game was closed (based on `lastUpdate` timestamp).
-    *   [ ] Present offline gains to the player upon reloading the game.
+    *   [x] Calculate progress made while the game was closed (based on `lastUpdate` timestamp).
+    *   [x] Present offline gains to the player upon reloading the game.
 
-## II. Category Theory Theme Integration
+## II. Speed of Light Theme Integration
 
-*   **Naming Conventions:**
-    *   [ ] Finalize thematic names for all current and future generators (e.g., Objects, Morphisms, 2-Morphisms, Natural Transformations, Functors, Adjunctions, Monads).
-    *   [ ] Name currencies and resources thematically (e.g., "Abstract Units", "Conceptual Energy", "Homotopy Points").
-*   **Visual Theming:**
-    *   [ ] Explore ways to represent category theory concepts visually in the UI (e.g., diagrams, icons). This is a design challenge.
-    *   [ ] Could generator icons or section backgrounds reflect the concept they represent?
-*   **Mechanic Integration (Advanced):**
-    *   [ ] **Prestige Layer 1: Enrichment?**
-        *   How does "enrichment" translate to a game mechanic? Does it change the "base category" of the game, altering how generators interact or what they produce?
-        *   Example: Prestige resets your "Objects" and "Morphisms" but unlocks "V-Objects" and "V-Morphisms" where V is another category (e.g., "Abelian Groups" - meaning generators now have an additive structure, or "Posets" - introducing ordering constraints/bonuses).
-    *   [ ] **Prestige Layer 2: ???**
-        *   Further abstract concepts: Kan extensions, Yoneda Lemma, etc. How could these inspire unique game mechanics? (This is highly speculative and for much later).
-    *   [ ] Consider if specific category theory 'theorems' or 'constructions' could be represented as powerful, temporary boosts or unlockable upgrades.
+*   [x] Define core thematic elements: JuLs (energy), Rapidity (φ), Ship Speed (v/c).
+*   [x] Rename existing generators and resources to fit the new theme.
+*   [x] Implement Rapidity calculation and display.
+*   [ ] Future: Explore mechanics related to relativistic effects (time dilation, length contraction) as potential prestige layers or boosts.
+*   [ ] Future: Consider if specific ship components or research could unlock new abilities or improve efficiency, tying into the speed of light theme.
 
 ## III. UI/UX Improvements
 
@@ -58,7 +50,7 @@ This document outlines future development tasks and ideas for the chaotic idle g
 ## IV. "Chaos" Element & Absurdity
 
 *   **Chaotic Events (Optional):**
-    *   [ ] Introduce random (but perhaps seeded/predictable for fairness) events that temporarily alter game rules or production rates (e.g., "A rogue theorem just doubled your Object production for 30 seconds!", "A paradigm shift has made Morphisms 10x cheaper!").
+    *   [ ] Introduce random (but perhaps seeded/predictable for fairness) events that temporarily alter game rules or production rates (e.g., "A rogue anomaly just doubled your JuL production for 30 seconds!", "A paradigm shift has made Morphisms 10x cheaper!").
 *   **Absurd Upgrades:**
     *   [ ] Design upgrades with humorous or nonsensical descriptions that still provide tangible benefits.
 *   **Visual Absurdity:**
