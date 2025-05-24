@@ -227,7 +227,27 @@ function loadGame() {
         // Load simple properties
         gameData.baseCurrencyName = parsedData.baseCurrencyName || gameData.baseCurrencyName;
         gameData.debugFreePurchases = typeof parsedData.debugFreePurchases === 'boolean' ? parsedData.debugFreePurchases : gameData.debugFreePurchases;
-        gameData.currentBuyMultiplier = parsedData.currentBuyMultiplier || gameData.currentBuyMultiplier;
+        
+        // Sanitize and load currentBuyMultiplier
+        if (parsedData.hasOwnProperty('currentBuyMultiplier')) {
+            const loadedMultiplier = parsedData.currentBuyMultiplier;
+            if (loadedMultiplier === 'MAX') {
+                gameData.currentBuyMultiplier = 'MAX';
+            } else {
+                const numericMultiplier = parseInt(loadedMultiplier, 10);
+                if (!isNaN(numericMultiplier) && [1, 10, 100].includes(numericMultiplier)) {
+                    gameData.currentBuyMultiplier = numericMultiplier;
+                } else {
+                    // Default to 1 if loaded value is invalid or not one of the allowed numbers
+                    gameData.currentBuyMultiplier = 1; 
+                    console.warn(`Invalid or unsupported currentBuyMultiplier ("${loadedMultiplier}") loaded from save. Defaulting to 1.`);
+                }
+            }
+        } else {
+            // If not present in save, it will retain its default value from gameData initialization (which is 1)
+            // Or, explicitly set it to default if concerned about initial gameData state:
+            // gameData.currentBuyMultiplier = 1; 
+        }
         // gameData.lastUpdate = parsedData.lastUpdate || Date.now(); // Will be overwritten later
 
         // Load Decimal properties
