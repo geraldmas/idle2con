@@ -46,20 +46,38 @@ function getGeneratorById(id) {
 }
 
 function updateProduction() {
-    let now = Date.now();
-    let timeDelta = (now - gameData.lastUpdate) / 1000; // Time delta in seconds
+    const currentUpdateTime = Date.now(); // Use a local 'now' for this specific update cycle
+    const timeDelta = (currentUpdateTime - gameData.lastUpdate) / 1000;
+    console.log(`updateProduction: timeDelta = ${timeDelta.toFixed(3)}s (lastUpdate: ${gameData.lastUpdate}, currentUpdateTime: ${currentUpdateTime})`);
+    if (timeDelta < 0) {
+        console.warn(`updateProduction: Negative timeDelta (${timeDelta.toFixed(3)}s). This might indicate an issue with system time or lastUpdate resetting. Clamping to 0.`);
+        // timeDelta = 0; // Option: clamp negative delta to prevent de-production
+    }
 
     for (let i = gameData.generators.length - 1; i >= 0; i--) {
         const generator = gameData.generators[i];
         if (generator.count > 0) {
+            console.log(`updateProduction: Processing ${generator.name} (Tier ${generator.tier}) - Count: ${formatNumber(generator.count)}, Prod/sec: ${generator.productionPerSecond}`);
             let totalProduction = generator.count * generator.productionPerSecond * timeDelta;
-            if (generator.producesGeneratorId) {
-                const targetGenerator = getGeneratorById(generator.producesGeneratorId);
-                if (targetGenerator) {
-                    targetGenerator.count += totalProduction;
+            // Prevent negative production if timeDelta was negative and not clamped above
+            if (totalProduction < 0 && timeDelta < 0) totalProduction = 0; 
+            console.log(`updateProduction: Calculated totalProduction for ${generator.name}: ${formatNumber(totalProduction)}`);
+
+            if (totalProduction > 0) { // Only log if actual production happened
+                if (generator.producesGeneratorId) {
+                    const targetGenerator = getGeneratorById(generator.producesGeneratorId);
+                    if (targetGenerator) {
+                        const oldCount = targetGenerator.count;
+                        targetGenerator.count += totalProduction;
+                        console.log(`updateProduction: ${generator.name} produced ${formatNumber(totalProduction)} of ${targetGenerator.name}. ${targetGenerator.name} count: ${formatNumber(oldCount)} -> ${formatNumber(targetGenerator.count)}`);
+                    }
+                } else if (generator.producesResource === "baseCurrency") {
+                    const oldCurrency = gameData.baseCurrency;
+                    gameData.baseCurrency += totalProduction;
+                    console.log(`updateProduction: ${generator.name} produced ${formatNumber(totalProduction)} of ${gameData.baseCurrencyName}. ${gameData.baseCurrencyName} count: ${formatNumber(oldCurrency)} -> ${formatNumber(gameData.baseCurrency)}`);
                 }
-            } else if (generator.producesResource === "baseCurrency") {
-                gameData.baseCurrency += totalProduction;
+            } else if (generator.count > 0) { // Log if owned generators produce nothing
+                console.log(`updateProduction: ${generator.name} calculated zero or negative production (totalProduction = ${formatNumber(totalProduction)}).`);
             }
         }
     }
@@ -182,6 +200,8 @@ function buyGenerator(generatorId) {
             if(tier2) tier2.isUnlocked = true; 
             console.log(`${getGeneratorById(2)?.name} Unlocked!`);
         }
+        // const generator is the one being bought/modified in buyGenerator's scope
+        console.log(`buyGenerator: Finished purchase for ${generator.name}. New count: ${formatNumber(generator.count)}, New currentCost: ${formatNumber(generator.currentCost)}`);
         updateUI();
     }
 }
