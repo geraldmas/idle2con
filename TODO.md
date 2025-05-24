@@ -26,7 +26,9 @@ This document outlines future development tasks and ideas for the chaotic idle g
 
 ## II. Speed of Light Theme Integration
 
-*   [x] Define core thematic elements: JuLs (energy), Rapidity (φ), Ship Speed (v/c).
+*   [x] Define core thematic elements: JuLs (energy, 1 JuL = 1 unit of Rapidity φ), Ship Speed (v/c and raw v).
+*   [x] Ensure Tier 1 ("JuL Harvester") directly produces JuLs. (Worker confirmed it was already correct, so task is complete).
+*   [x] Display raw ship speed (v) in m/s.
 *   [x] Rename existing generators and resources to fit the new theme.
 *   [x] Implement Rapidity calculation and display.
 *   [ ] Future: Explore mechanics related to relativistic effects (time dilation, length contraction) as potential prestige layers or boosts.
