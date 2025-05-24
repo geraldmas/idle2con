@@ -120,6 +120,8 @@ for (let i = 0; i < letters.length; i++) {
 // This will generate: '', K, M, B, T, aa, ab, ..., az, ba, bb, ..., bz, ..., za, ..., zz
 // Total of 5 + 26*26 = 5 + 676 = 681 suffixes, handling up to 1000^680
 
+const SPEED_OF_LIGHT_MPS = new Decimal(299792458); // meters per second
+
 function formatNumber(num) {
     if (!(num instanceof Decimal)) {
         // Attempt to convert non-Decimal inputs, log error if conversion fails or results in NaN
@@ -570,8 +572,8 @@ function updateUI() {
     // Calculate and Display Rapidity & Ship Speed
     const rapidityElement = document.getElementById('current-rapidity');
     const speedElement = document.getElementById('ship-speed-vc');
-    const SCALING_FACTOR_JULS_TO_RAPIDITY = 1000;
-    let currentRapidity = gameData.baseCurrency.div(SCALING_FACTOR_JULS_TO_RAPIDITY);
+    // Rapidity (φ) is now directly equal to the total JuLs.
+    let currentRapidity = gameData.baseCurrency;
 
     if (rapidityElement) {
         rapidityElement.textContent = formatNumber(currentRapidity);
@@ -602,6 +604,19 @@ function updateUI() {
     } else {
         console.error("updateUI: ship-speed-vc element NOT FOUND");
     }
+
+    // Calculate and Display Raw Ship Speed (v)
+    const rawSpeedElement = document.getElementById('ship-speed-raw');
+    if (rawSpeedElement) {
+        // vcRatio is already calculated from Math.tanh(numericRapidity)
+        // Ensure vcRatio is a Decimal for multiplication with SPEED_OF_LIGHT_MPS
+        let vcRatioDecimal = new Decimal(vcRatio); // vcRatio is a JS number from Math.tanh
+        let rawSpeed = SPEED_OF_LIGHT_MPS.mul(vcRatioDecimal);
+        rawSpeedElement.textContent = formatNumber(rawSpeed); // formatNumber handles the number, " m/s" is in HTML
+    } else {
+        console.error("updateUI: ship-speed-raw element NOT FOUND");
+    }
+
 
     gameData.generators.forEach(generator => {
         const tierElement = document.getElementById(`generator-tier-${generator.id}`);
