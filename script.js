@@ -357,13 +357,21 @@ function updateUI() {
         if (generator.id === 1) { // Only for Tier 1 generator
             const progressBarFill = document.getElementById(`gen-progress-bar-${generator.id}`);
             if (progressBarFill) {
-                if (generator.count > 0 && generator.productionPerSecond > 0) {
-                    // Calculate progress as a percentage of a 1-second cycle
-                    const progressPercent = (Date.now() % 1000) / 10; // (ms % 1000) / 10 to get 0-100
-                    progressBarFill.style.width = progressPercent + '%';
-                } else {
-                    progressBarFill.style.width = '0%'; // No progress if not producing
+                // New logic:
+                let progressPercent = 0;
+                // Ensure generator and its currentCost are valid before calculation
+                if (generator && typeof generator.currentCost === 'number') {
+                    if (generator.currentCost > 0) {
+                        progressPercent = (gameData.baseCurrency / generator.currentCost) * 100;
+                    } else { 
+                        // Cost is 0 or less, implies it's free or an edge case
+                        // If player has non-negative currency, consider it 100% affordable
+                        progressPercent = (gameData.baseCurrency >= 0) ? 100 : 0;
+                    }
                 }
+                // Clamp progressPercent between 0 and 100
+                progressPercent = Math.min(Math.max(progressPercent, 0), 100);
+                progressBarFill.style.width = progressPercent + '%';
             }
         }
     });
