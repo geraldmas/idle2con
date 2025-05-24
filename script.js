@@ -591,9 +591,8 @@ function updateUI() {
 
     // Calculate and Display Rapidity & Ship Speed
     const rapidityElement = document.getElementById('current-rapidity');
-    const speedElement = document.getElementById('ship-speed-vc');
-    // Rapidity (φ) is now directly equal to the total JuLs.
-    let currentRapidity = gameData.baseCurrency;
+    // Rapidity (φ): 1 JuL = 10^-9 units of Rapidity.
+    let currentRapidity = gameData.baseCurrency.div(new Decimal("1e9"));
 
     if (rapidityElement) {
         rapidityElement.textContent = formatNumber(currentRapidity);
@@ -601,38 +600,33 @@ function updateUI() {
         console.error("updateUI: current-rapidity element NOT FOUND");
     }
 
+    // --- Define numericRapidity and vcRatio here ---
+    let numericRapidity;
+    try {
+        numericRapidity = currentRapidity.toNumber();
+    } catch (e) {
+        numericRapidity = Infinity;
+    }
+    let vcRatio = Math.tanh(numericRapidity); // Calculate vcRatio once
+
+    // --- Calculate and Display Ship Speed (v/c %) ---
+    const speedElement = document.getElementById('ship-speed-vc');
     if (speedElement) {
-        let numericRapidity;
-        try {
-            numericRapidity = currentRapidity.toNumber(); // Convert Decimal rapidity to standard number for Math.tanh()
-        } catch (e) { // Handles cases where currentRapidity is too large to convert to number
-            numericRapidity = Infinity; // Math.tanh(Infinity) is 1
-        }
-
-        let vcRatio = Math.tanh(numericRapidity); // v/c = tanh(φ)
         let vcPercentage = new Decimal(vcRatio).mul(100);
-
-        // If vcRatio is extremely close to 1 (e.g. numericRapidity was Infinity or very large),
-        // vcPercentage might be like 99.9999... Decimal.toFixed(2) will handle rounding.
-        // Ensure that for vcRatio = 1, it shows 100.00%
-        if (vcRatio === 1) {
-             vcPercentage = new Decimal(100);
+        if (vcRatio === 1) { // Ensure 100% is exact if tanh is exactly 1
+            vcPercentage = new Decimal(100);
         }
-
-
-        speedElement.textContent = formatNumber(vcPercentage); // Display as percentage
+        speedElement.textContent = formatNumber(vcPercentage);
     } else {
         console.error("updateUI: ship-speed-vc element NOT FOUND");
     }
 
-    // Calculate and Display Raw Ship Speed (v)
+    // --- Calculate and Display Raw Ship Speed (v) ---
     const rawSpeedElement = document.getElementById('ship-speed-raw');
     if (rawSpeedElement) {
-        // vcRatio is already calculated from Math.tanh(numericRapidity)
-        // Ensure vcRatio is a Decimal for multiplication with SPEED_OF_LIGHT_MPS
-        let vcRatioDecimal = new Decimal(vcRatio); // vcRatio is a JS number from Math.tanh
+        let vcRatioDecimal = new Decimal(vcRatio); // vcRatio is now in scope
         let rawSpeed = SPEED_OF_LIGHT_MPS.mul(vcRatioDecimal);
-        rawSpeedElement.textContent = formatNumber(rawSpeed); // formatNumber handles the number, " m/s" is in HTML
+        rawSpeedElement.textContent = formatNumber(rawSpeed); 
     } else {
         console.error("updateUI: ship-speed-raw element NOT FOUND");
     }
