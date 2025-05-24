@@ -493,15 +493,23 @@ function buyGenerator(generatorId) {
         }
     }
 
-    if (totalUnitsBought.gt(0)) {
-        console.log(`Bought ${formatNumber(totalUnitsBought)} ${generator.name}(s).`);
-        // Check for unlocking Tier 2 generator - This specific check is now redundant due to checkUnlocks() in gameLoop.
-        // However, if it were to remain, it should use the new names.
-        // if (generator.id === 1 && gameData.generators[0].count.gte(5) && !getGeneratorById(2).isUnlocked) {
-        //     const tier2 = getGeneratorById(2);
-        //     if(tier2) tier2.isUnlocked = true;
-        //     console.log(`${getGeneratorById(2)?.name} Unlocked!`); // Would correctly use new name
-        // }
+    if (totalUnitsBought > 0) {
+        console.log(`Bought ${totalUnitsBought} ${generator.name}(s).`);
+        if (generator.id === 1 && gameData.generators[0].count >= 5 && !getGeneratorById(2).isUnlocked) {
+            const tier2 = getGeneratorById(2);
+            if(tier2) {
+                tier2.isUnlocked = true; 
+                console.log(`${tier2.name} Unlocked!`);
+                const tier2Element = document.getElementById('generator-tier-2');
+                if (tier2Element) {
+                    tier2Element.classList.add('newly-unlocked');
+                    setTimeout(() => {
+                        tier2Element.classList.remove('newly-unlocked');
+                    }, 700); // Duration of the animation in ms
+                }
+            }
+        }
+        // const generator is the one being bought/modified in buyGenerator's scope
         console.log(`buyGenerator: Finished purchase for ${generator.name}. New count: ${formatNumber(generator.count)}, New currentCost: ${formatNumber(generator.currentCost)}`);
         updateUI();
     }
@@ -537,6 +545,19 @@ function renderGeneratorElements() {
         const productionP = document.createElement('p');
         productionP.innerHTML = `Producing: <span id="gen-production-${generator.id}">0</span>/s <span class="produces-what" id="gen-produces-${generator.id}"></span>`;
         tierDiv.appendChild(productionP);
+
+        if (generator.id === 1) { // Only for Tier 1 generator
+            const progressBarContainer = document.createElement('div');
+            progressBarContainer.className = 'progress-bar-container';
+            progressBarContainer.id = `gen-progress-container-${generator.id}`;
+
+            const progressBarFill = document.createElement('div');
+            progressBarFill.className = 'progress-bar-fill';
+            progressBarFill.id = `gen-progress-bar-${generator.id}`;
+
+            progressBarContainer.appendChild(progressBarFill);
+            tierDiv.appendChild(progressBarContainer); // Add it before the button
+        }
 
         const buyButton = document.createElement('button');
         buyButton.id = `buy-gen-${generator.id}`;
@@ -680,6 +701,27 @@ function updateUI() {
                 const costSpanId = `gen-cost-${generator.id}`;
                 const resourceSpanId = `gen-cost-resource-${generator.id}`;
                 buyButton.innerHTML = `Buy ${generator.name} (Cost: <span id="${costSpanId}">${formatNumber(generator.currentCost)}</span> <span id="${resourceSpanId}">${costResourceName || gameData.baseCurrencyName}</span>)`;
+            }
+        }
+
+        if (generator.id === 1) { // Only for Tier 1 generator
+            const progressBarFill = document.getElementById(`gen-progress-bar-${generator.id}`);
+            if (progressBarFill) {
+                // New logic:
+                let progressPercent = 0;
+                // Ensure generator and its currentCost are valid before calculation
+                if (generator && typeof generator.currentCost === 'number') {
+                    if (generator.currentCost > 0) {
+                        progressPercent = (gameData.baseCurrency / generator.currentCost) * 100;
+                    } else { 
+                        // Cost is 0 or less, implies it's free or an edge case
+                        // If player has non-negative currency, consider it 100% affordable
+                        progressPercent = (gameData.baseCurrency >= 0) ? 100 : 0;
+                    }
+                }
+                // Clamp progressPercent between 0 and 100
+                progressPercent = Math.min(Math.max(progressPercent, 0), 100);
+                progressBarFill.style.width = progressPercent + '%';
             }
         }
     });
