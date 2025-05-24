@@ -2,15 +2,15 @@
 
 // Main game data object
 let gameData = {
-    baseCurrency: new Decimal(20), // This will be our "Objects"
-    baseCurrencyName: "Objects",
+    baseCurrency: new Decimal(20), // This will be our "JuLs"
+    baseCurrencyName: "JuLs", // Renamed from "Objects"
     generators: [
         {
             id: 1,
-            name: "Object Generator",
+            name: "JuL Harvester", // Renamed from "Object Generator"
             tier: 1, // This is the first generator the player interacts with to produce the base currency
             count: new Decimal(0), // How many the player owns
-            productionPerSecond: new Decimal(1), // Produces 1 Object per second per generator
+            productionPerSecond: new Decimal(1), // Produces 1 JuL per second per generator
             producesResource: "baseCurrency", // Special keyword for the base currency
             baseCost: new Decimal(10),
             currentCost: new Decimal(10),
@@ -19,29 +19,42 @@ let gameData = {
         },
         {
             id: 2,
-            name: "Morphism Generator",
+            name: "Collector Booster", // Renamed from "Morphism Generator"
             tier: 2, // This generator produces the generator of tier 1
             count: new Decimal(0),
-            productionPerSecond: new Decimal(1), // Produces 1 Object Generator per second per generator
-            producesGeneratorId: 1, // ID of the generator it produces (Object Generator)
-            resourceCostName: "Objects", // What it costs to buy this generator
-            baseCost: new Decimal(100), // Cost in "Objects"
+            productionPerSecond: new Decimal(1), // Produces 1 JuL Harvester per second per generator
+            producesGeneratorId: 1, // ID of the generator it produces (JuL Harvester)
+            resourceCostName: "JuLs", // What it costs to buy this generator
+            baseCost: new Decimal(100), // Cost in "JuLs"
             currentCost: new Decimal(100),
             costMultiplier: new Decimal(1.20),
-            isUnlocked: false // Will be unlocked later, e.g., after owning some Object Generators
+            isUnlocked: false // Will be unlocked later
         },
         {
             id: 3,
-            name: "2-Morphism Generator",
+            name: "Efficiency Upgrade", // Renamed from "2-Morphism Generator"
             tier: 3,
             count: new Decimal(0),
             productionPerSecond: new Decimal(1),
-            producesGeneratorId: 2, // Produces Morphism Generators
-            resourceCostName: "Objects", // Costs Base Currency
-            baseCost: new Decimal(1e9), // 1 Billion Objects
+            producesGeneratorId: 2, // Produces Collector Boosters
+            resourceCostName: "JuLs", // Costs Base Currency
+            baseCost: new Decimal(1e9), // 1 Billion JuLs
             currentCost: new Decimal(1e9),
             costMultiplier: new Decimal(1.25),
             isUnlocked: false 
+        },
+        {
+            id: 4,
+            name: "Hyperspace Funnel", // Renamed from "Functor Generator"
+            tier: 4,
+            count: new Decimal(0),
+            productionPerSecond: new Decimal(1),
+            producesGeneratorId: 3, // Produces Efficiency Upgrades
+            resourceCostName: "JuLs", // Costs Base Currency
+            baseCost: new Decimal("1e15"), // 1 Quadrillion JuLs
+            currentCost: new Decimal("1e15"),
+            costMultiplier: new Decimal(1.30),
+            isUnlocked: false
         }
         // Future generator tiers can be added here
     ],
@@ -283,22 +296,77 @@ function checkUnlocks() {
     const tier2Gen = getGeneratorById(2);
     if (tier2Gen && !tier2Gen.isUnlocked) {
         const tier1Gen = getGeneratorById(1);
-        if (tier1Gen && tier1Gen.count.gte(5)) { // Condition: 5 Object Generators
+        if (tier1Gen && tier1Gen.count.gte(5)) { // Condition: 5 JuL Harvesters
             tier2Gen.isUnlocked = true;
             console.log(tier2Gen.name + " Unlocked!");
         }
     }
 
-    // Unlock Tier 3 Generator (2-Morphism Generator)
+    // Unlock Tier 3 Generator (Efficiency Upgrade)
     const tier3Gen = getGeneratorById(3);
     if (tier3Gen && !tier3Gen.isUnlocked) {
-        const tier2GenForUnlock = getGeneratorById(2); // Re-fetch or use tier2Gen if scope allows and it's the correct one
-        if (tier2GenForUnlock && tier2GenForUnlock.count.gte(25)) { // Condition: 25 Morphism Generators
+        const tier2GenForUnlock = getGeneratorById(2); 
+        if (tier2GenForUnlock && tier2GenForUnlock.count.gte(25)) { // Condition: 25 Collector Boosters
             tier3Gen.isUnlocked = true;
             console.log(tier3Gen.name + " Unlocked!");
         }
     }
+
+    // Unlock Tier 4 Generator (Hyperspace Funnel)
+    const tier4Gen = getGeneratorById(4);
+    if (tier4Gen && !tier4Gen.isUnlocked) {
+        const tier3GenForUnlock = getGeneratorById(3); 
+        if (tier3GenForUnlock && tier3GenForUnlock.count.gte(25)) { // Condition: 25 Efficiency Upgrades
+            tier4Gen.isUnlocked = true;
+            console.log(tier4Gen.name + " Unlocked!");
+        }
+    }
     // Future unlock conditions can be added here
+}
+
+function calculateOfflineProduction(timeDeltaSeconds) {
+    // console.log(`calculateOfflineProduction called with timeDeltaSeconds: ${timeDeltaSeconds.toString()}`);
+    if (timeDeltaSeconds.isNegative() || timeDeltaSeconds.isZero()) return;
+
+    // Create a snapshot of initial counts for logging or more complex calcs if needed later
+    const initialCounts = { baseCurrency: gameData.baseCurrency };
+    gameData.generators.forEach(gen => {
+        initialCounts[gen.id] = gen.count;
+    });
+
+    for (let i = gameData.generators.length - 1; i >= 0; i--) {
+        const generator = gameData.generators[i];
+        if (generator.count.gt(0)) { // Only consider generators the player owns
+            let totalProduction = generator.count.mul(generator.productionPerSecond).mul(timeDeltaSeconds);
+            // console.log(`Offline Calc: ${generator.name} (Count: ${formatNumber(generator.count)}) would produce ${formatNumber(totalProduction)} over ${timeDeltaSeconds.toFixed(0)}s`);
+
+            if (totalProduction.gt(0)) {
+                if (generator.producesGeneratorId) {
+                    const targetGenerator = getGeneratorById(generator.producesGeneratorId);
+                    if (targetGenerator) {
+                        // const oldTargetCount = targetGenerator.count;
+                        targetGenerator.count = targetGenerator.count.add(totalProduction);
+                        // console.log(`Offline: ${targetGenerator.name} count updated from ${formatNumber(oldTargetCount)} to ${formatNumber(targetGenerator.count)}`);
+                    }
+                } else if (generator.producesResource === "baseCurrency") {
+                    // const oldCurrency = gameData.baseCurrency;
+                    gameData.baseCurrency = gameData.baseCurrency.add(totalProduction);
+                    // console.log(`Offline: Base currency updated from ${formatNumber(oldCurrency)} to ${formatNumber(gameData.baseCurrency)}`);
+                }
+            }
+        }
+    }
+    // Log overall changes
+    const currencyEarned = gameData.baseCurrency.sub(initialCounts.baseCurrency);
+    if (currencyEarned.gt(0)) {
+         console.log(`Base currency earned offline: ${formatNumber(currencyEarned)}`);
+    }
+    gameData.generators.forEach(gen => {
+        const producedOffline = gen.count.sub(initialCounts[gen.id]);
+        if (producedOffline.gt(0)) {
+            console.log(`${gen.name} produced offline: ${formatNumber(producedOffline)}`);
+        }
+    });
 }
 
 function calculateMaxBuy(generatorId) {
@@ -425,12 +493,13 @@ function buyGenerator(generatorId) {
 
     if (totalUnitsBought.gt(0)) {
         console.log(`Bought ${formatNumber(totalUnitsBought)} ${generator.name}(s).`);
-        // Check for unlocking Tier 2 generator
-        if (generator.id === 1 && gameData.generators[0].count.gte(5) && !getGeneratorById(2).isUnlocked) {
-            const tier2 = getGeneratorById(2);
-            if(tier2) tier2.isUnlocked = true;
-            console.log(`${getGeneratorById(2)?.name} Unlocked!`);
-        }
+        // Check for unlocking Tier 2 generator - This specific check is now redundant due to checkUnlocks() in gameLoop.
+        // However, if it were to remain, it should use the new names.
+        // if (generator.id === 1 && gameData.generators[0].count.gte(5) && !getGeneratorById(2).isUnlocked) {
+        //     const tier2 = getGeneratorById(2);
+        //     if(tier2) tier2.isUnlocked = true;
+        //     console.log(`${getGeneratorById(2)?.name} Unlocked!`); // Would correctly use new name
+        // }
         console.log(`buyGenerator: Finished purchase for ${generator.name}. New count: ${formatNumber(generator.count)}, New currentCost: ${formatNumber(generator.currentCost)}`);
         updateUI();
     }
@@ -496,6 +565,42 @@ function updateUI() {
         baseCurrencyElement.textContent = valueToSet;
     } else {
         console.error('updateUI: base-currency-count element NOT FOUND');
+    }
+
+    // Calculate and Display Rapidity & Ship Speed
+    const rapidityElement = document.getElementById('current-rapidity');
+    const speedElement = document.getElementById('ship-speed-vc');
+    const SCALING_FACTOR_JULS_TO_RAPIDITY = 1000;
+    let currentRapidity = gameData.baseCurrency.div(SCALING_FACTOR_JULS_TO_RAPIDITY);
+
+    if (rapidityElement) {
+        rapidityElement.textContent = formatNumber(currentRapidity);
+    } else {
+        console.error("updateUI: current-rapidity element NOT FOUND");
+    }
+
+    if (speedElement) {
+        let numericRapidity;
+        try {
+            numericRapidity = currentRapidity.toNumber(); // Convert Decimal rapidity to standard number for Math.tanh()
+        } catch (e) { // Handles cases where currentRapidity is too large to convert to number
+            numericRapidity = Infinity; // Math.tanh(Infinity) is 1
+        }
+
+        let vcRatio = Math.tanh(numericRapidity); // v/c = tanh(φ)
+        let vcPercentage = new Decimal(vcRatio).mul(100);
+
+        // If vcRatio is extremely close to 1 (e.g. numericRapidity was Infinity or very large),
+        // vcPercentage might be like 99.9999... Decimal.toFixed(2) will handle rounding.
+        // Ensure that for vcRatio = 1, it shows 100.00%
+        if (vcRatio === 1) {
+             vcPercentage = new Decimal(100);
+        }
+
+
+        speedElement.textContent = formatNumber(vcPercentage); // Display as percentage
+    } else {
+        console.error("updateUI: ship-speed-vc element NOT FOUND");
     }
 
     gameData.generators.forEach(generator => {
@@ -581,19 +686,46 @@ function gameLoop() {
 
 // Ensure the interval is correctly set up.
 let gameLoopInterval; // Define gameLoopInterval in a scope accessible for clearing
-if (typeof gameLoopInterval !== 'undefined') {
-    clearInterval(gameLoopInterval);
-}
-gameLoopInterval = setInterval(gameLoop, 100); // Run game loop 10 times per second
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadGame(); // Load game data first
-    renderGeneratorElements(); // Then render elements based on loaded/default data
-    updateUI(); // Update UI with the potentially loaded data
+    loadGame(); // Load game data first - this sets gameData.lastUpdate from save or to Date.now() if no save
+    renderGeneratorElements(); // Render elements based on loaded/default data
+
+    // --- Offline Progress Calculation ---
+    const now = Date.now();
+    // gameData.lastUpdate should be from the loaded game data or from a fresh start via loadGame()
+    let timeDeltaOfflineInSeconds = new Decimal(now - gameData.lastUpdate).div(1000);
+
+    if (timeDeltaOfflineInSeconds.lt(1) || timeDeltaOfflineInSeconds.isNegative()) {
+        // If negative, it implies system time changed or an issue with saved lastUpdate.
+        // Treat as no significant offline time.
+        console.log("Offline time less than 1 second or negative, no significant progress to calculate.");
+    } else {
+        // Optional: Cap offline time
+        // const maxOfflineTimeSeconds = new Decimal(7 * 24 * 60 * 60); // 1 week
+        // if (timeDeltaOfflineInSeconds.gt(maxOfflineTimeSeconds)) {
+        //     console.warn(`Offline time was ${timeDeltaOfflineInSeconds.toFixed(0)}s, capped to ${maxOfflineTimeSeconds.toFixed(0)}s.`);
+        //     timeDeltaOfflineInSeconds = maxOfflineTimeSeconds;
+        // }
+        console.log(`Calculating offline progress for ${timeDeltaOfflineInSeconds.toFixed(0)} seconds.`);
+        calculateOfflineProduction(timeDeltaOfflineInSeconds);
+        checkUnlocks(); // Check if any new generators were unlocked due to offline production
+        console.log("Offline progress calculation complete.");
+    }
+    
+    gameData.lastUpdate = now; // Set lastUpdate to current time AFTER offline calculations and BEFORE game loop starts
+    
+    updateUI(); // Update UI with the potentially loaded and offline-progressed data
+
+    // Setup game loop
+    if (typeof gameLoopInterval !== 'undefined') { // Clear any existing interval (e.g. from HMR)
+        clearInterval(gameLoopInterval);
+    }
+    gameLoopInterval = setInterval(gameLoop, 100); // Run game loop 10 times per second
 
     // Setup autosave
     setInterval(saveGame, 15000); // Save every 15 seconds
-    // console.log("Autosave interval (15s) set up.");
+    console.log("Autosave interval (15s) set up.");
 
     const generatorsSection = document.getElementById('generators-section');
     if (generatorsSection) {
