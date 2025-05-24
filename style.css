@@ -1,9 +1,10 @@
 /* Import Google Fonts - A clean, modern sans-serif */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* CSS Variables for easier theme management */
 :root {
-    --font-family-main: 'Inter', sans-serif;
+    --font-family-main: 'Roboto', sans-serif;
     
     --color-background: #282c34; /* Clean white background */
     --color-text-primary: #abb2bf; /* Dark grey-blue for primary text */
@@ -78,8 +79,8 @@ section h2 {
 /* Generator Styling */
 .generator-tier {
     background-color: #323840; /* Darker background for generator tiers */
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 15px;
+    margin-bottom: 15px;
     border-radius: var(--border-radius-small);
     border: 1px solid var(--color-border); /* Use dark theme border */
     box-shadow: var(--shadow-soft); /* Use updated soft shadow */
@@ -94,14 +95,14 @@ section h2 {
     margin-top: 0;
     margin-bottom: 15px;
     color: var(--color-text-primary); /* Use primary text color */
-    font-size: 1.3em;
+    font-size: 1.15em;
     font-weight: 500;
 }
 
 .generator-tier p {
     margin: 8px 0;
     color: var(--color-text-secondary); /* Use secondary text color */
-    font-size: 0.95em;
+    font-size: 0.9em;
 }
 .generator-tier p span { /* For the actual numbers/names */
     color: var(--color-text-primary); /* Use primary text color */
@@ -110,16 +111,16 @@ section h2 {
 
 
 .generator-tier button {
-    padding: 12px 20px;
+    padding: 10px 15px;
     background-color: var(--color-secondary-accent); /* Use secondary accent color */
     color: #ffffff; /* White text for contrast */
     border: none;
     border-radius: var(--border-radius-small);
     cursor: pointer;
-    font-size: 1em;
+    font-size: 0.95em;
     font-weight: 500;
     font-family: var(--font-family-main);
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    transition: background-color 0.2s ease, transform 0.1s ease, filter 0.1s ease;
     box-shadow: var(--shadow-soft); /* Use updated soft shadow */
 }
 
@@ -129,7 +130,8 @@ section h2 {
 }
 
 .generator-tier button:active:not(:disabled) {
-    transform: translateY(0px);
+    transform: scale(0.96);
+    filter: brightness(1.1);
 }
 
 
@@ -223,4 +225,48 @@ footer {
 #purchase-multipliers span {
     margin-right: 5px;
     font-weight: 500;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 12px; /* Or any desired height */
+    background-color: #21252b; /* Darker shade of tier background */
+    border-radius: 6px;
+    margin-top: 10px; /* Space above the progress bar */
+    margin-bottom: 10px; /* Space below the progress bar, before the button */
+    overflow: hidden; /* Ensures fill stays within rounded corners */
+}
+
+.progress-bar-fill {
+    width: 0%; /* Initial width */
+    height: 100%;
+    background-color: var(--color-primary-accent);
+    border-radius: 6px; /* Match container's radius */
+    transition: width 0.1s linear; /* Smooth width changes, if desired, though direct updates might be fine */
+}
+
+@keyframes flashUnlock {
+    0% {
+        background-color: var(--color-secondary-accent);
+        opacity: 0.6;
+        transform: scale(0.95);
+    }
+    70% {
+        background-color: var(--color-secondary-accent); /* Keep accent during flash */
+        opacity: 1;
+        transform: scale(1.02);
+    }
+    100% {
+        /* The background color will revert to its normal state from .generator-tier styling */
+        /* Explicitly setting it to the normal background might be needed if specificity issues arise */
+        /* background-color: #323840; (Example, if this is the .generator-tier background) */
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.generator-tier.newly-unlocked {
+    /* Ensure the animation uses the current background of .generator-tier as its 'default' state at 100% */
+    /* The keyframe 100% might need to explicitly set background-color if it doesn't revert correctly */
+    animation: flashUnlock 0.7s ease-out;
 }

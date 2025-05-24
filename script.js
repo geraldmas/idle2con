@@ -197,8 +197,17 @@ function buyGenerator(generatorId) {
         console.log(`Bought ${totalUnitsBought} ${generator.name}(s).`);
         if (generator.id === 1 && gameData.generators[0].count >= 5 && !getGeneratorById(2).isUnlocked) {
             const tier2 = getGeneratorById(2);
-            if(tier2) tier2.isUnlocked = true; 
-            console.log(`${getGeneratorById(2)?.name} Unlocked!`);
+            if(tier2) {
+                tier2.isUnlocked = true; 
+                console.log(`${tier2.name} Unlocked!`);
+                const tier2Element = document.getElementById('generator-tier-2');
+                if (tier2Element) {
+                    tier2Element.classList.add('newly-unlocked');
+                    setTimeout(() => {
+                        tier2Element.classList.remove('newly-unlocked');
+                    }, 700); // Duration of the animation in ms
+                }
+            }
         }
         // const generator is the one being bought/modified in buyGenerator's scope
         console.log(`buyGenerator: Finished purchase for ${generator.name}. New count: ${formatNumber(generator.count)}, New currentCost: ${formatNumber(generator.currentCost)}`);
@@ -235,6 +244,19 @@ function renderGeneratorElements() {
         const productionP = document.createElement('p');
         productionP.innerHTML = `Producing: <span id="gen-production-${generator.id}">0</span>/s <span class="produces-what" id="gen-produces-${generator.id}"></span>`;
         tierDiv.appendChild(productionP);
+
+        if (generator.id === 1) { // Only for Tier 1 generator
+            const progressBarContainer = document.createElement('div');
+            progressBarContainer.className = 'progress-bar-container';
+            progressBarContainer.id = `gen-progress-container-${generator.id}`;
+
+            const progressBarFill = document.createElement('div');
+            progressBarFill.className = 'progress-bar-fill';
+            progressBarFill.id = `gen-progress-bar-${generator.id}`;
+
+            progressBarContainer.appendChild(progressBarFill);
+            tierDiv.appendChild(progressBarContainer); // Add it before the button
+        }
 
         const buyButton = document.createElement('button');
         buyButton.id = `buy-gen-${generator.id}`;
@@ -329,6 +351,19 @@ function updateUI() {
                 const costSpanId = `gen-cost-${generator.id}`;
                 const resourceSpanId = `gen-cost-resource-${generator.id}`;
                 buyButton.innerHTML = `Buy ${generator.name} (Cost: <span id="${costSpanId}">${formatNumber(generator.currentCost)}</span> <span id="${resourceSpanId}">${costResourceName || gameData.baseCurrencyName}</span>)`;
+            }
+        }
+
+        if (generator.id === 1) { // Only for Tier 1 generator
+            const progressBarFill = document.getElementById(`gen-progress-bar-${generator.id}`);
+            if (progressBarFill) {
+                if (generator.count > 0 && generator.productionPerSecond > 0) {
+                    // Calculate progress as a percentage of a 1-second cycle
+                    const progressPercent = (Date.now() % 1000) / 10; // (ms % 1000) / 10 to get 0-100
+                    progressBarFill.style.width = progressPercent + '%';
+                } else {
+                    progressBarFill.style.width = '0%'; // No progress if not producing
+                }
             }
         }
     });
