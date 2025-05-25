@@ -4,16 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [vue()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      'vue': 'vue/dist/vue.esm-bundler.prod.js'
-    },
-  },
-  server: {
-    port: 3000,
-  },
-  base: '/idle2con/',
+  base: './',
   build: {
     outDir: 'docs',
     assetsDir: 'assets',
@@ -29,7 +20,12 @@ export default defineConfig({
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]'
       }
-    },
+    }
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
   },
   define: {
     __VUE_OPTIONS_API__: true,
