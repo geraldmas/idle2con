@@ -7,18 +7,18 @@ describe('Generator', () => {
     beforeEach(() => {
         resources = { value: 0 };
         generators = [
-            new Generator(1, { states: 1, generator: 0 }, { states: 1.2, generator: 0 }),
-            new Generator(2, { states: 10, generator: 10 }, { states: 1.3, generator: 1.1 }),
-            new Generator(3, { states: 10, generator: 10 }, { states: 1.4, generator: 1.2 }),
-            new Generator(4, { states: 10, generator: 10 }, { states: 1.5, generator: 1.3 })
+            new Generator(1, { states: 1, generator: 0 }, { states: 1.05, generator: 0 }), 
+            new Generator(2, { states: 10, generator: 10 }, { states: 1.1, generator: 1.1 }),
+            new Generator(3, { states: 50, generator: 10 }, { states: 1.15, generator: 1.2 }), 
+            new Generator(4, { states: 200, generator: 10 }, { states: 1.2, generator: 1.3 })
         ];
     });
 
     test('Generator 1 initializes correctly', () => {
         const gen1 = generators[0];
         expect(gen1.rank).toBe(1);
-        expect(gen1.baseCost).toEqual({ states: 1, generator: 0 });
-        expect(gen1.growthRates).toEqual({ states: 1.2, generator: 0 });
+        expect(gen1.baseCost).toEqual({ states: 1, generator: 0 }); // Base cost passed to constructor
+        expect(gen1.growthRates).toEqual({ states: 1.05, generator: 0 }); // Growth rates passed to constructor
         expect(gen1.count).toBe(0);
         expect(gen1.isUnlocked).toBe(true);
         expect(gen1.unlockedFeatures.size).toBe(0);
@@ -27,8 +27,8 @@ describe('Generator', () => {
     test('Generator 2+ initializes correctly and is locked initially', () => {
         const gen2 = generators[1];
         expect(gen2.rank).toBe(2);
-        expect(gen2.baseCost).toEqual({ states: 10, generator: 10 });
-        expect(gen2.growthRates).toEqual({ states: 1.3, generator: 1.1 });
+        expect(gen2.baseCost).toEqual({ states: 10, generator: 10 }); // Base cost passed to constructor
+        expect(gen2.growthRates).toEqual({ states: 1.1, generator: 1.1 }); // Growth rates passed to constructor
         expect(gen2.count).toBe(0);
         expect(gen2.isUnlocked).toBe(false);
         expect(gen2.unlockedFeatures.size).toBe(0);
@@ -36,26 +36,43 @@ describe('Generator', () => {
 
     test('getCost calculates state cost correctly for each rank and manualPurchases', () => {
         const mockGameState = { antiparticleEffects: { costDivider: 1 } };
-        const gen1 = generators[0]; // Growth 1.2, BaseCost.states = 1
+        
+        const gen1 = generators[0]; // Rank 1, Growth 1.05, Base 1 (from getCost internal logic)
         gen1.manualPurchases = 0;
-        expect(gen1.getCost(mockGameState)).toBe(1); // 1 * 1.2^0
+        expect(gen1.getCost(mockGameState)).toBe(1); // 1 * 1.05^0
         gen1.manualPurchases = 1;
-        expect(gen1.getCost(mockGameState)).toBe(Math.floor(1 * 1.2)); // 1
+        expect(gen1.getCost(mockGameState)).toBe(Math.floor(1 * 1.05)); // floor(1.05) = 1
         gen1.manualPurchases = 2;
-        expect(gen1.getCost(mockGameState)).toBe(Math.floor(1 * 1.2 * 1.2)); // 1
+        expect(gen1.getCost(mockGameState)).toBe(Math.floor(1 * 1.05 * 1.05)); // floor(1.1025) = 1
 
-        const gen2 = generators[1]; // Growth 1.3, BaseCost.states = 10
+        const gen2 = generators[1]; // Rank 2, Growth 1.1, Base 10 (from getCost internal logic)
         gen2.manualPurchases = 0;
-        expect(gen2.getCost(mockGameState)).toBe(10); // 10 * 1.3^0
+        expect(gen2.getCost(mockGameState)).toBe(10); // 10 * 1.1^0
         gen2.manualPurchases = 1;
-        expect(gen2.getCost(mockGameState)).toBe(Math.floor(10 * 1.3)); // 13
+        expect(gen2.getCost(mockGameState)).toBe(Math.floor(10 * 1.1)); // floor(11) = 11
         gen2.manualPurchases = 2;
-        expect(gen2.getCost(mockGameState)).toBe(Math.floor(10 * 1.3 * 1.3)); // 16
+        expect(gen2.getCost(mockGameState)).toBe(Math.floor(10 * 1.1 * 1.1)); // floor(12.1) = 12
 
+        const gen3 = generators[2]; // Rank 3, Growth 1.15, Base 50 (from getCost internal logic)
+        gen3.manualPurchases = 0;
+        expect(gen3.getCost(mockGameState)).toBe(50); // 50 * 1.15^0
+        gen3.manualPurchases = 1;
+        expect(gen3.getCost(mockGameState)).toBe(Math.floor(50 * 1.15)); // floor(57.5) = 57
+        gen3.manualPurchases = 2;
+        expect(gen3.getCost(mockGameState)).toBe(Math.floor(50 * 1.15 * 1.15)); // floor(66.125) = 66
+
+        const gen4 = generators[3]; // Rank 4, Growth 1.2, Base 200 (from getCost internal logic)
+        gen4.manualPurchases = 0;
+        expect(gen4.getCost(mockGameState)).toBe(200); // 200 * 1.2^0
+        gen4.manualPurchases = 1;
+        expect(gen4.getCost(mockGameState)).toBe(Math.floor(200 * 1.2)); // floor(240) = 240
+        gen4.manualPurchases = 2;
+        expect(gen4.getCost(mockGameState)).toBe(Math.floor(200 * 1.2 * 1.2)); // floor(288) = 288
+        
         // Test with costDivider
         const mockGameStateDivided = { antiparticleEffects: { costDivider: 2 } };
-        gen2.manualPurchases = 1;
-        expect(gen2.getCost(mockGameStateDivided)).toBe(Math.floor(13 / 2)); // 6
+        gen2.manualPurchases = 1; // Cost is 11
+        expect(gen2.getCost(mockGameStateDivided)).toBe(Math.floor(11 / 2)); // floor(5.5) = 5
     });
 
     test('getGeneratorCost calculates previous generator cost correctly', () => {

@@ -22,11 +22,6 @@ export default class Resource {
     // Utiliser des calculs plus précis pour la production
     const production = (this.generators * this.baseProduction * adjustedDt * productionMultiplier);
     this.value = Number((this.value + production).toFixed(10)); // Limiter à 10 décimales pour éviter les erreurs d'arrondi
-
-    // Mettre à jour le prochain palier d'état pour l'affichage si la ressource est 'États'
-    if (this.name === 'États') {
-      this.updateNextStateMilestone(this.value, antiparticleEffects);
-    }
   }
 
   // Vérifie si un palier d'état est atteint et ajoute un état si c'est le cas

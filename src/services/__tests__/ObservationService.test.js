@@ -15,59 +15,80 @@ describe('ObservationService', () => {
         service = new ObservationService();
     });
 
-    describe('getObservationCost', () => {
-        test('should return base cost for rank 1', () => {
-            expect(service.getObservationCost(1)).toBe(10);
+    describe('getParticleObservationCost', () => {
+        test('should return base cost when observationCount is 0', () => {
+            service.observationCount = 0;
+            // baseCost is 10, costGrowthRate is 1.1
+            // Expected: floor(10 * 1.1^0) = 10
+            expect(service.getParticleObservationCost()).toBe(10);
         });
 
-        test('should increase cost exponentially with rank', () => {
-            expect(service.getObservationCost(2)).toBe(20);
-            expect(service.getObservationCost(3)).toBe(40);
+        test('should increase cost correctly with observationCount', () => {
+            service.observationCount = 0;
+            expect(service.getParticleObservationCost()).toBe(10); // Cost for 1st observation
+
+            service.observationCount = 1; // After 1 observation
+            // Expected: floor(10 * 1.1^1) = 11
+            expect(service.getParticleObservationCost()).toBe(11); // Cost for 2nd observation
+
+            service.observationCount = 2; // After 2 observations
+            // Expected: floor(10 * 1.1^2) = floor(10 * 1.21) = 12
+            expect(service.getParticleObservationCost()).toBe(12); // Cost for 3rd observation
         });
     });
 
-    describe('canObserve', () => {
-        test('should return true when enough generators', () => {
-            expect(service.canObserve(1, 10)).toBe(true);
-            expect(service.canObserve(2, 20)).toBe(true);
+    describe('canObserveParticle', () => {
+        // gameState is not used by canObserveParticle in the current implementation, can pass null or {}
+        test('should return true when enough generators for current observation cost', () => {
+            service.observationCount = 0; // Cost will be 10
+            expect(service.canObserveParticle(1, 10, {})).toBe(true);
+            
+            service.observationCount = 1; // Cost will be 11
+            expect(service.canObserveParticle(1, 11, {})).toBe(true);
         });
 
-        test('should return false when not enough generators', () => {
-            expect(service.canObserve(1, 9)).toBe(false);
-            expect(service.canObserve(2, 19)).toBe(false);
+        test('should return false when not enough generators for current observation cost', () => {
+            service.observationCount = 0; // Cost will be 10
+            expect(service.canObserveParticle(1, 9, {})).toBe(false);
+
+            service.observationCount = 1; // Cost will be 11
+            expect(service.canObserveParticle(1, 10, {})).toBe(false);
         });
     });
 
     describe('observe', () => {
-        test('should throw error when not enough generators', () => {
-            expect(() => service.observe(1, 0)).toThrow('Pas assez de générateurs de rang 1 pour observer');
-        });
-
-        test('should generate and store a particle when successful', () => {
-            // Mock Math.random pour tester les différentes générations
+        test('should generate and store a particle, and use correct increasing cost', () => {
             const originalRandom = Math.random;
-            Math.random = jest.fn();
+            Math.random = jest.fn().mockReturnValue(0.5); // Mock for consistent particle generation
 
-            // Test pour génération 1
-            Math.random.mockReturnValue(0.5);
-            const result1 = service.observe(1);
-            expect(result1.particle).toBeDefined();
-            expect(result1.cost).toBe(10);
-            expect(mockStorage.addParticle).toHaveBeenCalled();
+            // First observation
+            service.observationCount = 0;
+            // Assuming observe method itself will increment observationCount AFTER successful observation
+            // For this test, we'll assume the passed generatorCount is sufficient.
+            // The method signature is observe(gameState, prestigeService, isAntiparticle = false, generatorRank = null, generatorCount = null)
+            // The `generatorCount` parameter is used by `canObserveParticle` if it were called inside, but it's called before.
+            // The `observe` method itself doesn't re-check `canObserveParticle`.
+            // The cost is determined by `this.getParticleObservationCost()` at the time of calling.
+            
+            // Mock necessary parts of gameState and prestigeService if they are touched by 'observe' for normal particles
+            const mockGameState = {}; 
+            const mockPrestigeService = {};
 
-            // Test pour génération 2
-            Math.random.mockReturnValue(0.9); // 20% chance de génération 2
-            const result2 = service.observe(2);
-            expect(result2.particle).toBeDefined();
-            expect(result2.cost).toBe(20);
+            let result = service.observe(mockGameState, mockPrestigeService, false, 1, 10); // Rank 1, 10 generators available
+            expect(result.particle).toBeDefined();
+            expect(result.cost).toBe(10); // Cost for observationCount = 0
+            expect(mockStorage.addParticle).toHaveBeenCalledTimes(1);
+            // Assuming observe increments its internal observationCount
+            // Check service.observationCount after observe if it's responsible for incrementing it.
+            // The current code in ObservationService.js: this.observationCount++; is inside observe()
 
-            // Test pour génération 3
-            Math.random.mockReturnValue(0.9); // 15% chance de génération 3
-            const result3 = service.observe(3);
-            expect(result3.particle).toBeDefined();
-            expect(result3.cost).toBe(40);
+            // Second observation
+            // service.observationCount is now 1 due to the previous call
+            result = service.observe(mockGameState, mockPrestigeService, false, 1, 11); // Rank 1, 11 generators available
+            expect(result.particle).toBeDefined();
+            expect(result.cost).toBe(11); // Cost for observationCount = 1
+            expect(mockStorage.addParticle).toHaveBeenCalledTimes(2);
 
-            // Restaurer Math.random
             Math.random = originalRandom;
         });
     });

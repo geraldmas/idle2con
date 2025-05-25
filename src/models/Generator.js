@@ -59,10 +59,10 @@ export default class Generator {
                           this.rank === 3 ? 50 :
                           this.rank === 4 ? 200 : 0; // Coûts de base pour G2, G3, G4
 
-    const growthRate = this.rank === 1 ? 1.2 :
-                      this.rank === 2 ? 1.3 :
-                      this.rank === 3 ? 1.4 :
-                      this.rank === 4 ? 1.5 : 1; // Default to 1 if rank is somehow out of expected range
+    const growthRate = this.rank === 1 ? 1.05 :
+                      this.rank === 2 ? 1.1 :
+                      this.rank === 3 ? 1.15 :
+                      this.rank === 4 ? 1.2 : 1; // Default to 1 if rank is somehow out of expected range
 
     // Utiliser manualPurchases pour la croissance exponentielle du coût
     const calculatedCost = baseStateCost * Math.pow(growthRate, this.manualPurchases);
