@@ -473,15 +473,44 @@ function buyGenerator(generatorId) {
         numToBuy = new Decimal(numericValue);
     }
 
+    console.log('[DEBUG] buyGenerator: Checking numToBuy state before use.');
+    console.log('[DEBUG] typeof numToBuy:', typeof numToBuy);
+    console.log('[DEBUG] numToBuy instanceof Decimal:', numToBuy instanceof Decimal);
+    if (numToBuy && typeof numToBuy === 'object') {
+        console.log('[DEBUG] numToBuy.constructor.name:', numToBuy.constructor ? numToBuy.constructor.name : 'N/A');
+        console.log('[DEBUG] Object.prototype.hasOwnProperty.call(numToBuy, "isInfinite"):', Object.prototype.hasOwnProperty.call(numToBuy, 'isInfinite'));
+        console.log('[DEBUG] "isInfinite" in numToBuy (check prototype chain):', "isInfinite" in numToBuy);
+    }
+    console.log('[DEBUG] typeof Decimal.prototype.isInfinite:', typeof Decimal.prototype.isInfinite);
+    try {
+        console.log('[DEBUG] numToBuy.toString():', numToBuy.toString());
+    } catch (e) {
+        console.log('[DEBUG] numToBuy.toString() failed:', e.message);
+    }
+
     if (numToBuy.isZero()) {
         console.log("Cannot buy 0 units.");
         return;
     }
-    
-    if (numToBuy.isInfinite() && generator.currentCost.isZero() && gameData.debugFreePurchases) {
+
+    // Fallback for isInfinite
+    let isNumToBuyInfinite;
+    if (numToBuy && typeof numToBuy.isInfinite === 'function') {
+        isNumToBuyInfinite = numToBuy.isInfinite();
+    } else {
+        console.warn('[DEBUG] buyGenerator: numToBuy.isInfinite is not a function or numToBuy is null/undefined. Using fallback for isInfinite check.');
+        if (numToBuy instanceof Decimal) {
+            isNumToBuyInfinite = (numToBuy.equals(new Decimal(Infinity)) || numToBuy.equals(new Decimal(-Infinity)));
+        } else {
+            console.error('[DEBUG] buyGenerator: numToBuy is not a Decimal for fallback isInfinite check. Assuming not infinite.');
+            isNumToBuyInfinite = false; // Default to false if not a Decimal
+        }
+    }
+
+    if (isNumToBuyInfinite && generator.currentCost.isZero() && gameData.debugFreePurchases) {
         numToBuy = new Decimal(1000);
         console.log("Buying a large batch of free generators in debug mode.");
-    } else if (numToBuy.isInfinite()) {
+    } else if (isNumToBuyInfinite) { // Use the result from the check made above
         console.log("Cannot determine a finite max buy amount for free items, limiting to 1000.");
         numToBuy = new Decimal(1000);
     }
