@@ -2,6 +2,13 @@
 
 This document outlines future development tasks and ideas for the chaotic idle game.
 
+## 0. Instructions cahier des charges
+
+*   **Gestion de la rapidité + monnaie**
+    *   [ ] La rapidité doit être beaucoup plus difficile à obtenir. 
+    *   [ ] Première couche de prestige lorsque le vaisseau atteint la vitesse de la lumière, similaire aux infinis dans exponential idle 
+    *   [ ] Réfléchir aux mécaniques de prestige. La première couche est plutôt une introduction, celle-ci est celle où le vrai jeu commence. 
+
 ## I. Core Gameplay Enhancements
 
 *   **BigNumber Implementation:**
