@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Standards de Code et Tests
+
+## Structure du Code
+- Suivre l'architecture MVC définie dans [specification.md](mdc:specification.md)
+- Organiser le code selon les dossiers :
+  - `src/models/` : Classes de données
+  - `src/views/` : Composants Vue
+  - `src/controllers/` : Logique métier
+  - `src/services/` : Services (sauvegarde, ticks, etc.)
+  - `src/utils/` : Utilitaires
+
+## Tests
+- Créer des tests unitaires pour chaque nouvelle fonctionnalité
+- Placer les tests dans un dossier `__tests__` à côté du fichier testé
+- Suivre la convention de nommage : `{nom-du-fichier}.test.js`
+- Exécuter les tests avant chaque commit
+
+## Documentation
+- Documenter les classes et méthodes importantes
+- Mettre à jour [plan.md](mdc:plan.md) à chaque PR validée
+- Suivre les spécifications techniques de [specification.md](mdc:specification.md)
+

@@ -1,0 +1,26 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Workflow de Développement
+
+## Références Obligatoires
+- Toujours consulter [specification.md](mdc:specification.md) pour les détails techniques et fonctionnels
+- Toujours consulter [plan.md](mdc:plan.md) pour suivre la progression et les tâches
+
+## Processus de Développement
+1. Pour chaque nouvelle fonctionnalité :
+   - Créer une nouvelle branche avec le format `feature/PR{N}-description`
+   - Attendre la validation avant de pousser les changements
+   - Une fois validé, marquer les tâches comme accomplies dans [plan.md](mdc:plan.md) avec ✅
+
+## Structure des Branches
+- Format : `feature/PR{N}-description`
+- Exemple : `feature/PR2-resources-system`
+
+## Validation des Tâches
+- Marquer les tâches accomplies dans [plan.md](mdc:plan.md)
+- Ne pas supprimer les tâches, les déplacer dans la section "Tâches accomplies"
+- Ajouter ✅ à chaque sous-tâche complétée
+
