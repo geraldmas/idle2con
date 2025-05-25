@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [vue()],
-  base: '/idle2con/',
+  base: './',
   build: {
     outDir: 'docs',
     assetsDir: 'assets',
