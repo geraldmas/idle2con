@@ -1,14 +1,17 @@
-import { ParticleStorage } from './ParticleStorage';
 import { Muon, NeutrinoMu, QuarkCharm, QuarkStrange } from '../models/particles/Generation2Particles';
 import { Tau, NeutrinoTau, QuarkTruth, QuarkBeauty } from '../models/particles/Generation3Particles';
 
 export class ParticleFusion {
     constructor() {
-        this.storage = new ParticleStorage();
+        this.particles = [];
+    }
+
+    setParticles(particles) {
+        this.particles = particles;
     }
 
     canFuseParticles(type) {
-        const particles = this.storage.getParticlesByType(type) || [];
+        const particles = this.particles.filter(p => p.type === type);
         return particles.length >= 3;
     }
 
@@ -39,17 +42,20 @@ export class ParticleFusion {
             throw new Error('Pas assez de particules pour la fusion');
         }
 
-        const particles = this.storage.getParticlesByType(type) || [];
+        const particles = this.particles.filter(p => p.type === type);
 
         // Supprimer les 3 particules utilisées pour la fusion
         const particlesToRemove = particles.slice(0, 3);
         particlesToRemove.forEach(particle => {
-            this.storage.removeParticle(particle.id);
+            const index = this.particles.findIndex(p => p.id === particle.id);
+            if (index !== -1) {
+                this.particles.splice(index, 1);
+            }
         });
 
         // Créer la nouvelle particule
         const newParticle = new ResultClass();
-        this.storage.addParticle(newParticle);
+        this.particles.push(newParticle);
 
         return newParticle;
     }
@@ -57,7 +63,7 @@ export class ParticleFusion {
     getFusionRequirements(type) {
         return {
             required: 3,
-            current: this.storage.getParticlesByType(type).length,
+            current: this.particles.filter(p => p.type === type).length,
             result: this.getFusionResult(type)?.name || 'Fusion impossible'
         };
     }

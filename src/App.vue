@@ -91,7 +91,7 @@ import GeneratorComponent from './views/Generator.vue';
 import ParticleCollection from './components/ParticleCollection.vue';
 import ParticleObservation from './components/ParticleObservation.vue';
 import { ParticleInitializer } from './services/ParticleInitializer';
-import ParticleFusion from './components/ParticleFusion.vue';
+import { ParticleFusion } from './services/ParticleFusion';
 
 export default {
   name: 'App',
@@ -225,11 +225,13 @@ export default {
     const handleParticleFusion = (data) => {
       console.log('Tentative de fusion de particules de type:', data.type);
       const fusionService = new ParticleFusion();
+      fusionService.setParticles(gameState.particles);
       
       try {
         const newParticle = fusionService.fuseParticles(data.type);
         if (newParticle) {
-          gameState.particles.push(newParticle);
+          // Mettre à jour la liste des particules avec les nouvelles données
+          gameState.particles = fusionService.particles;
           console.log('Particule fusionnée ajoutée:', newParticle);
         }
       } catch (error) {

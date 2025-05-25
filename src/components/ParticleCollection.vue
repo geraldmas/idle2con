@@ -17,23 +17,12 @@
       </div>
     </div>
 
-    <div class="generation-tabs">
-      <button 
-        v-for="gen in 3" 
-        :key="gen"
-        :class="{ active: currentGeneration === gen }"
-        @click="currentGeneration = gen"
-      >
-        Génération {{ gen }}
-      </button>
-    </div>
-
     <div class="particles-grid">
       <div 
-        v-for="particle in groupedFilteredParticles" 
+        v-for="particle in groupedParticles" 
         :key="particle.type"
         class="particle-card"
-        :class="particle.type"
+        :class="[particle.type, `generation-${particle.generation}`]"
       >
         <div class="particle-header">
           <h3>{{ particle.name }}</h3>
@@ -78,7 +67,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { ParticleStorage } from '../services/ParticleStorage';
 import { ParticleFusion } from '../services/ParticleFusion';
 
@@ -92,15 +81,17 @@ export default {
   },
   setup(props, { emit }) {
     const fusionService = new ParticleFusion();
-    const currentGeneration = ref(1);
     const showFusionModal = ref(false);
     const fusionParticleType = ref('');
     const fusionError = ref('');
 
-    const groupedFilteredParticles = computed(() => {
-      const filtered = props.particles.filter(p => p.generation === currentGeneration.value);
+    watch(() => props.particles, (newParticles) => {
+      fusionService.setParticles(newParticles);
+    }, { immediate: true });
+
+    const groupedParticles = computed(() => {
       const grouped = {};
-      filtered.forEach(particle => {
+      props.particles.forEach(particle => {
         if (!grouped[particle.type]) {
           grouped[particle.type] = {
             type: particle.type,
@@ -116,8 +107,7 @@ export default {
     });
 
     const canFuse = (type) => {
-      const particleGroup = groupedFilteredParticles.value.find(p => p.type === type);
-      return particleGroup && fusionService.canFuseParticles(type, particleGroup.count);
+      return fusionService.canFuseParticles(type);
     };
 
     const formatEffect = (particle) => {
@@ -163,7 +153,7 @@ export default {
 
     const prepareFusion = (type) => {
       fusionParticleType.value = type;
-      const particleGroup = groupedFilteredParticles.value.find(p => p.type === type);
+      const particleGroup = groupedParticles.value.find(p => p.type === type);
       const currentCount = particleGroup ? particleGroup.count : 0;
 
       if (fusionService.canFuseParticles(type, currentCount)) {
@@ -185,8 +175,7 @@ export default {
     };
 
     return {
-      currentGeneration,
-      groupedFilteredParticles,
+      groupedParticles,
       showFusionModal,
       fusionParticleType,
       fusionError,
@@ -234,29 +223,6 @@ export default {
   font-weight: bold;
 }
 
-.generation-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-}
-
-.generation-tabs button {
-  padding: 6px 12px;
-  background: #16213e;
-  border: 1px solid #0f3460;
-  color: #e6e6e6;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9em;
-}
-
-.generation-tabs button.active {
-  background: #0f3460;
-  border-color: #e94560;
-}
-
 .particles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -273,6 +239,7 @@ export default {
   display: flex;
   flex-direction: column;
   position: relative;
+  min-height: 120px;
 }
 
 .particle-card:hover {
@@ -285,6 +252,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 .particle-header h3 {
@@ -292,6 +261,7 @@ export default {
   font-size: 1em;
   flex-grow: 1;
   margin-right: 5px;
+  word-break: break-word;
 }
 
 .generation-badge {
@@ -321,29 +291,33 @@ export default {
 .particle-details {
   margin: 8px 0;
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.effect, .quantity {
+.effect, .total-effect {
   display: flex;
-  justify-content: space-between;
-  margin: 3px 0;
+  flex-direction: column;
+  gap: 2px;
   font-size: 0.9em;
 }
 
-.label {
+.effect .label, .total-effect .label {
   color: #8b8b8b;
+  font-size: 0.9em;
 }
 
-.value {
+.effect .value, .total-effect .value {
   color: #e6e6e6;
   font-family: 'Roboto Mono', monospace;
-  text-align: right;
-  flex-shrink: 0;
-  margin-left: 10px;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .particle-actions {
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 8px;
 }
 
 .fuse-button {
@@ -356,6 +330,7 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9em;
+  white-space: nowrap;
 }
 
 .fuse-button:hover {
@@ -422,12 +397,31 @@ export default {
   background: #d13b54;
 }
 
-.total-effect {
-  display: flex;
-  justify-content: space-between;
-  margin: 3px 0;
-  font-size: 0.9em;
-  color: #00ff9d;
+/* Styles pour les différentes générations */
+.particle-card.generation-1 {
+  border-left: 4px solid #e94560; /* Rouge pour la génération 1 */
+}
+
+.particle-card.generation-2 {
+  border-left: 4px solid #00ff9d; /* Vert pour la génération 2 */
+}
+
+.particle-card.generation-3 {
+  border-left: 4px solid #ff9d00; /* Orange pour la génération 3 */
+}
+
+.generation-1 .generation-badge {
+  background: #e94560;
+}
+
+.generation-2 .generation-badge {
+  background: #00ff9d;
+  color: #1a1a2e;
+}
+
+.generation-3 .generation-badge {
+  background: #ff9d00;
+  color: #1a1a2e;
 }
 
 @media (max-width: 480px) {
@@ -437,6 +431,7 @@ export default {
   }
 
   .particle-card {
+    min-height: 100px;
     padding: 8px;
   }
 
@@ -449,7 +444,7 @@ export default {
     font-size: 0.6em;
   }
 
-  .effect, .quantity {
+  .effect .value, .total-effect .value {
     font-size: 0.8em;
   }
 

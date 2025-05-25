@@ -127,6 +127,30 @@ class TickService {
       }
     }
 
+    // Production de Générateurs II par les Générateurs III
+    const gen3 = this.gameStateGenerators.find(gen => gen.rank === 3);
+    if (gen2 && gen3 && gen3.count > 0) {
+      // Chaque Générateur III produit 0.1 Générateur II par seconde
+      const gen2Production = gen3.count * 0.1 * this.dt;
+      gen2.count += gen2Production;
+      
+      if (this.debug) {
+        console.log(`Production de Générateurs II: +${gen2Production.toFixed(3)} (${gen3.count} Générateurs III)`);
+      }
+    }
+
+    // Production de Générateurs III par les Générateurs IV
+    const gen4 = this.gameStateGenerators.find(gen => gen.rank === 4);
+    if (gen3 && gen4 && gen4.count > 0) {
+      // Chaque Générateur IV produit 0.1 Générateur III par seconde
+      const gen3Production = gen4.count * 0.1 * this.dt;
+      gen3.count += gen3Production;
+      
+      if (this.debug) {
+        console.log(`Production de Générateurs III: +${gen3Production.toFixed(3)} (${gen4.count} Générateurs IV)`);
+      }
+    }
+
     // Logique pour vérifier et débloquer les générateurs
     this.gameStateGenerators.forEach((generator, index) => {
         generator.updateUnlockStatus(this.gameStateGenerators);
