@@ -10,6 +10,10 @@
         <span class="label">Production:</span>
         <span class="value">+{{ formatNumber(production * milestoneBonus) }}/s</span>
       </div>
+      <div class="production-per-generator">
+        <span class="label">Production par générateur:</span>
+        <span class="value">+{{ formatNumber(production) }}/s</span>
+      </div>
       <div class="cost">
         <span class="label">Coût:</span>
         <span class="value">
@@ -35,11 +39,11 @@
 
     <button 
       class="buy-button" 
-      :disabled="!canAfford || !isUnlocked"
+      :disabled="!isUnlocked || (!canAfford && !TickService.debug)"
       @click="buyGenerator"
     >
       <span v-if="!isUnlocked">Débloqué à {{ unlockRequirement }}</span>
-      <span v-else-if="!canAfford">Coût: {{ formatNumber(cost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span></span>
+      <span v-else-if="!canAfford && !TickService.debug">Coût: {{ formatNumber(cost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span></span>
       <span v-else>Acheter</span>
     </button>
   </div>
@@ -47,6 +51,7 @@
 
 <script>
 import { computed } from 'vue';
+import TickService from '../services/TickService';
 
 export default {
   name: 'Generator',
@@ -121,7 +126,7 @@ export default {
     };
 
     const buyGenerator = () => {
-      if (props.canAfford && props.isUnlocked) {
+      if ((props.canAfford || TickService.debug) && props.isUnlocked) {
         emit('buy');
       }
     };
@@ -129,7 +134,8 @@ export default {
     return {
       formatNumber,
       buyGenerator,
-      getPreviousGeneratorName
+      getPreviousGeneratorName,
+      TickService
     };
   }
 }
@@ -179,6 +185,14 @@ export default {
   display: flex;
   justify-content: space-between;
   margin-bottom: 5px;
+}
+
+.production-per-generator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+  color: #888;
 }
 
 .label {

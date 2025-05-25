@@ -12,7 +12,7 @@
     <div class="game-container">
       <!-- Section Production -->
       <section class="game-section production-section">
-        <h2>Production Quantique</h2>
+        <h2>Production</h2>
         <div class="resources-panel">
           <div v-for="resource in gameState.resources.values()" :key="resource.name" class="resource">
             <span class="resource-name">{{ resource.name }}</span>
@@ -27,14 +27,14 @@
             </span>
           </div>
         </div>
+        <h3>Générateurs</h3>
         <div class="generators-panel">
-          <h3>Générateurs</h3>
           <Generator
             v-for="(generator, index) in gameState.generators"
             :key="generator.name"
             :name="generator.name"
             :count="generator.count"
-            :production="generator.getProduction() / generator.getMilestoneBonus()"
+            :production="generator.getBaseProduction()"
             :cost="generator.getCost()"
             :generator-cost="generator.getGeneratorCost()"
             :is-unlocked="generator.isUnlocked()"
@@ -49,70 +49,34 @@
         </div>
       </section>
 
-      <!-- Section Observation et Fusion -->
-      <section class="game-section observation-fusion-section">
-        <h2>Observation et Fusion</h2>
-        
-        <!-- Sous-section Observation -->
-        <div class="collection-subsection">
-          <h3>Observation Quantique</h3>
-          <ParticleObservation 
+      <!-- Section Particules -->
+      <section class="game-section particles-section">
+        <h2>Particules</h2>
+
+        <!-- Sous-section Obtention de Particules -->
+        <div class="subsection observation-subsection">
+          <h3>Obtention de Particules</h3>
+          <ParticleObservation
             :generators="gameState.generators"
             @particle-observed="handleParticleObserved"
           />
         </div>
 
-        <!-- Sous-section Fusion -->
-        <div class="collection-subsection">
-          <h3>Fusion de Particules</h3>
-          <ParticleFusion 
+        <!-- Sous-section Collection et Effets -->
+        <div class="subsection collection-effects-subsection">
+          <h3>Collection et Effets</h3>
+          <ParticleCollection
             :particles="gameState.particles"
-            @particle-fused="handleParticleFused"
+            @fuse-particles="handleParticleFusion"
           />
         </div>
       </section>
 
-      <!-- Section Collection et Effets -->
-      <section class="game-section collection-effects-section">
-        <h2>Collection et Effets</h2>
-
-        <!-- Sous-section Collection -->
-        <div class="collection-subsection">
-          <h3>Collection de Particules</h3>
-          <div class="particles-grid">
-            <div v-for="particle in gameState.particles" :key="particle.id" class="particle-card">
-              <span class="particle-name">{{ particle.name }}</span>
-              <span class="particle-generation">Génération {{ particle.generation }}</span>
-              <span class="particle-type">Type: {{ particle.type }}</span>
-              <span class="particle-effect">{{ particle.getEffectDescription() }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sous-section Effets -->
-        <div class="collection-subsection">
-          <h3>Effets des Particules</h3>
-          <div class="effects-grid">
-            <div class="effect-category">
-              <h4>Production</h4>
-              <div class="effect-item">
-                <span class="effect-name">Multiplicateur dt:</span>
-                <span class="effect-value">{{ formatNumber(getTotalDtMultiplier(), 3) }}x</span>
-              </div>
-              <div class="effect-item">
-                <span class="effect-name">Bonus générateurs:</span>
-                <span class="effect-value">{{ formatNumber(getTotalGeneratorBonus(), 3) }}x</span>
-              </div>
-            </div>
-            <div class="effect-category">
-              <h4>Coûts</h4>
-              <div class="effect-item">
-                <span class="effect-name">Réduction coûts:</span>
-                <span class="effect-value">{{ formatNumber(getTotalCostReduction(), 3) }}x</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Section Progression -->
+      <section class="game-section progression-section">
+        <h2>Progression</h2>
+        <!-- Ajoutez ici les composants ou éléments liés aux améliorations et au prestige -->
+        <!-- Par exemple: <Upgrades /> ou <Prestige /> -->
       </section>
     </div>
   </div>
@@ -242,39 +206,113 @@ export default {
       TickService.stop();
     });
 
-    const handleParticleFused = (newParticle) => {
-      console.log('Nouvelle particule fusionnée:', newParticle);
-      // Ici, nous pourrions mettre à jour l'état du jeu si nécessaire
-    };
-
     const handleParticleObserved = (data) => {
-      console.log('Nouvelle particule observée:', data);
-      
+      console.log('Particule observée:', data);
+      // Mettre à jour l'état des particules dans gameState
+      // Ajouter la particule observée à la collection
+      gameState.particles.push(data.particle);
+
       // Consommer les générateurs du rang approprié
       const generator = gameState.generators.find(g => g.rank === data.rank);
       if (generator) {
         generator.count -= data.cost;
+        // Assurez-vous que le count ne devient pas négatif
+        if (generator.count < 0) generator.count = 0;
       }
+    };
 
-      // Ajouter la particule à la collection
-      gameState.particles.push(data.particle);
+    // Nouvelle méthode pour gérer la fusion des particules
+    const handleParticleFusion = (data) => {
+      console.log('Tentative de fusion de particules de type:', data.type);
+      const typeToFuse = data.type;
+      const particlesToFuse = gameState.particles.filter(p => p.type === typeToFuse);
+
+      if (particlesToFuse.length >= 3) {
+        // Retirer 3 particules du type à fusionner
+        let removedCount = 0;
+        gameState.particles = gameState.particles.filter(particle => {
+          if (particle.type === typeToFuse && removedCount < 3) {
+            removedCount++;
+            return false; // Exclure cette particule
+          }
+          return true; // Garder cette particule
+        });
+
+        // Créer la particule fusionnée (logique basée sur specification.md)
+        // Il faudra ici implémenter la logique pour déterminer quelle particule est créée
+        // en fonction du type de celles qui sont fusionnées.
+        // Pour l'instant, ajoutons un placeholder ou une logique simple.
+        // Selon specification.md: 3 particules identiques -> 1 de génération supérieure.
+        // Il faudrait un service ou une méthode pour cela.
+
+        // Exemple simplifié (assumant que le type fusionné détermine le nouveau type et génération):
+        const firstParticleToFuse = particlesToFuse[0]; // Prendre une particule pour obtenir sa génération actuelle
+        let newParticle = null;
+
+        // Cette logique de création de particule fusionnée devrait être dans un service (ex: ParticleFusionService)
+        // En attendant, une implémentation simple basée sur la génération:
+        if (firstParticleToFuse) {
+           const newGeneration = firstParticleToFuse.generation + 1;
+           // Il faudrait ici une logique pour créer la particule correcte de la nouvelle génération
+           // based on the specific type that was fused. This is a simplified placeholder.
+           // Need access to the Particle model and potentially a ParticleFactory or similar.
+
+           // Pour le moment, ajoutons une particule générique de la nouvelle génération pour test
+           // Idéalement, on appellerait un service: ParticleFusionService.createFusedParticle(typeToFuse)
+           // En attendant, simulation:
+           console.warn("La logique de création de particule fusionnée doit être implémentée correctement.");
+           // Créer une instance de particule de la génération suivante (simplifié)
+           // Cela nécessite d'avoir accès à la logique de création de particules ici ou via un service
+           // Pour que cet exemple compile, j'ajoute un placeholder d'objet particule
+            newParticle = { // Placeholder object, replace with actual particle instance creation
+                id: Date.now(), // Simple ID
+                name: `Fused Particle Gen ${newGeneration}`, // Placeholder name
+                type: `fusedGen${newGeneration}`, // Placeholder type
+                generation: newGeneration,
+                getEffectDescription: () => `Placeholder Effect Gen ${newGeneration}` // Placeholder method
+            };
+
+            if (newParticle) {
+                 gameState.particles.push(newParticle);
+                 console.log('Particule fusionnée ajoutée:', newParticle);
+                 // Optionnel: émettre un événement si d'autres composants doivent réagir à la fusion
+                 // emit('particle-fused-successfully', newParticle);
+            }
+        }
+
+      } else {
+        console.warn('Pas assez de particules pour fusionner de type:', typeToFuse);
+        // Afficher un message à l'utilisateur si possible
+      }
     };
 
     const getTotalDtMultiplier = () => {
       return gameState.particles.reduce((total, particle) => {
-        return total * (1 + particle.getDtMultiplier());
+        // S'assurer que particle et getDtMultiplier existent
+        if (particle && typeof particle.getDtMultiplier === 'function') {
+             return total * (1 + particle.getDtMultiplier());
+        }
+        return total;
       }, 1);
     };
 
     const getTotalGeneratorBonus = () => {
       return gameState.particles.reduce((total, particle) => {
-        return total * (1 + particle.getGeneratorBonus());
+         // S'assurer que particle et getGeneratorBonus existent
+         if (particle && typeof particle.getGeneratorBonus === 'function') {
+             return total * (1 + particle.getGeneratorBonus());
+         }
+        return total;
       }, 1);
     };
 
     const getTotalCostReduction = () => {
       return gameState.particles.reduce((total, particle) => {
-        return total * (1 - particle.getCostReduction());
+         // S'assurer que particle et getCostReduction existent
+        if (particle && typeof particle.getCostReduction === 'function') {
+             return total * (1 - particle.getCostReduction());
+        }
+        return total;
       }, 1);
     };
 
@@ -286,8 +324,8 @@ export default {
       toggleDebug,
       buyGenerator,
       TickService,
-      handleParticleFused,
       handleParticleObserved,
+      handleParticleFusion,
       getTotalDtMultiplier,
       getTotalGeneratorBonus,
       getTotalCostReduction
@@ -297,246 +335,187 @@ export default {
 </script>
 
 <style>
+/* Styles globaux pour le corps et l'application */
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #0f0e17;
+  color: #fffffe;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
 .app {
-  font-family: 'Roboto Mono', monospace;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #1a1a2e;
-  color: #e6e6e6;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
 .app-header {
+  background-color: #1a1a2e;
+  padding: 15px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #2a2a4a;
 }
 
-h1 {
-  color: #00ff9d;
-  font-size: 2.5em;
+.app-header h1 {
   margin: 0;
-  text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
-}
-
-h2 {
-  color: #00ff9d;
+  color: #00ff9d; /* Couleur vive pour le titre */
   font-size: 1.8em;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #2a2a4a;
-  padding-bottom: 10px;
 }
 
-h3 {
-  color: #00ff9d;
-  font-size: 1.4em;
-  margin: 15px 0;
-}
-
-.game-container {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-}
-
-.game-section {
+.debug-controls .debug-button {
+  padding: 5px 10px;
   background: #2a2a4a;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-}
-
-.resources-panel {
-  margin-bottom: 20px;
-}
-
-.resource {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  background: #1a1a2e;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  border: 1px solid #3a3a5a;
-}
-
-.resource-name {
-  font-weight: bold;
-  width: 150px;
-  color: #00ff9d;
-}
-
-.resource-value {
-  flex: 1;
-  text-align: right;
-  margin-right: 10px;
-  font-family: 'Roboto Mono', monospace;
-}
-
-.resource-potential {
-  color: #00ff9d;
-  font-size: 0.9em;
-  margin-right: 10px;
-}
-
-.resource-generators {
   color: #ff9d00;
-  font-size: 0.9em;
-}
-
-.resource-next-milestone {
-  color: #ff9d00;
-  font-size: 0.9em;
-}
-
-.debug-button {
-  padding: 8px 16px;
-  background-color: #2a2a4a;
-  color: #00ff9d;
-  border: 1px solid #00ff9d;
+  border: 1px solid #ff9d00;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
   font-family: 'Roboto Mono', monospace;
+  transition: all 0.2s;
 }
 
-.debug-button:hover {
-  background-color: #00ff9d;
+.debug-controls .debug-button:hover {
+  background: #ff9d00;
   color: #1a1a2e;
 }
 
-.particles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
-  margin-top: 15px;
+.game-container {
+  display: flex;
+  flex-wrap: wrap; /* Permettre aux sections de passer à la ligne sur petits écrans */
+  padding: 20px;
+  gap: 20px; /* Espacement entre les sections */
+  flex-grow: 1;
 }
 
-.particle-card {
-  background: #2a2a4a;
-  border: 1px solid #3a3a5a;
-  border-radius: 6px;
-  padding: 15px;
-}
-
-.particle-name {
-  color: #00ff9d;
-  font-weight: bold;
-  display: block;
-  margin-bottom: 5px;
-}
-
-.particle-generation {
-  color: #ff9d00;
-  font-size: 0.9em;
-  display: block;
-  margin-bottom: 5px;
-}
-
-.particle-type {
-  color: #ff9d00;
-  font-size: 0.9em;
-  display: block;
-  margin-bottom: 5px;
-}
-
-.particle-effect {
-  color: #a0a0a0;
-  font-size: 0.9em;
-  display: block;
-}
-
-.prestige-panel {
+.game-section {
   background: #1a1a2e;
-  border-radius: 4px;
-  padding: 15px;
   border: 1px solid #3a3a5a;
-}
-
-.collection-section {
-  background: #16213e;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  flex: 1; /* Permettre aux sections de prendre l'espace disponible */
+  min-width: 300px; /* Largeur minimale pour les sections */
+  display: flex;
+  flex-direction: column;
 }
 
-.collection-subsection {
-  background: #1a1a2e;
-  border-radius: 6px;
-  padding: 20px;
-  margin-bottom: 20px;
-  border: 1px solid #3a3a5a;
-}
-
-.collection-subsection:last-child {
-  margin-bottom: 0;
-}
-
-.collection-subsection h3 {
+.game-section h2 {
   color: #00ff9d;
-  margin-bottom: 15px;
-  font-size: 1.4em;
+  margin-top: 0;
   border-bottom: 1px solid #3a3a5a;
   padding-bottom: 10px;
+  margin-bottom: 20px;
 }
 
-.effects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-top: 15px;
-}
-
-.effect-category {
-  background: #2a2a4a;
-  border-radius: 4px;
+/* Styles pour les sous-sections (Observation, Collection, etc.) */
+.subsection {
+  background: #16213e; /* Couleur de fond légèrement différente */
+  border: 1px solid #0f3460;
+  border-radius: 6px;
   padding: 15px;
+  margin-bottom: 15px; /* Espacement entre les sous-sections */
 }
 
-.effect-category h4 {
-  color: #00ff9d;
+.subsection:last-child {
+    margin-bottom: 0; /* Supprimer la marge inférieure de la dernière sous-section */
+}
+
+.subsection h3 {
+  color: #e94560; /* Couleur d'accent pour les sous-titres */
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #0f3460;
+  padding-bottom: 8px;
+}
+
+/* Styles spécifiques aux panneaux (resources, generators) */
+.resources-panel, .generators-panel {
+  margin-bottom: 20px;
+}
+
+.resources-panel .resource {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 4px;
+  padding: 10px;
   margin-bottom: 10px;
-  font-size: 1.1em;
-}
-
-.effect-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 0.9em;
+  align-items: center;
 }
 
-.effect-name {
-  color: #a0a0a0;
-}
-
-.effect-value {
-  color: #00ff9d;
+.resource-name {
+  color: #a9b3c1;
   font-weight: bold;
 }
 
-.fusion-section {
-  background: #16213e;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.resource-value {
+  color: #e6e6e6;
+  font-family: 'Roboto Mono', monospace;
 }
 
-.observation-fusion-section {
-  background: #16213e;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.resource-details {
+  font-size: 0.8em;
+  color: #a9b3c1;
+  margin-left: 10px;
 }
 
-.collection-effects-section {
-  background: #16213e;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.resource-next-milestone {
+   font-size: 0.9em;
+  color: #00ff9d;
+  margin-left: 10px;
+}
+
+/* Media Queries pour le Responsive Design */
+@media (max-width: 768px) {
+  .game-container {
+    flex-direction: column; /* Empiler les sections sur petits écrans */
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .game-section {
+    min-width: auto; /* Supprimer la largeur minimale sur petits écrans */
+  }
+
+  .app-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .app-header h1 {
+    font-size: 1.5em;
+  }
+
+  .subsection {
+    margin-bottom: 10px; /* Réduire la marge inférieure des sous-sections sur petits écrans */
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 10px;
+  }
+
+  .game-section {
+    padding: 15px;
+  }
+
+  .subsection {
+    padding: 10px;
+  }
+
+  .resources-panel .resource,
+  .generators-panel .generator {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .resource-details, .resource-next-milestone {
+    margin-left: 0;
+    margin-top: 5px;
+  }
 }
 </style> 

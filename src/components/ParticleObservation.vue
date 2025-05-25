@@ -7,29 +7,20 @@
         <h3>Générateur Quantique {{ rank }}</h3>
         <div class="observation-info">
           <span class="cost">Coût: {{ getObservationCost(rank) }} générateurs de rang {{ rank }}</span>
-          <span class="chances">
-            Chances d'obtenir:
-            <template v-if="rank === 1">
-              <ul>
-                <li>100% Particule de Génération 1</li>
-              </ul>
-            </template>
-            <template v-else-if="rank === 2">
-              <ul>
-                <li>80% Particule de Génération 1</li>
-                <li>20% Particule de Génération 2</li>
-              </ul>
-            </template>
-            <template v-else>
-              <ul>
-                <li>50% Particule de Génération 1</li>
-                <li>35% Particule de Génération 2</li>
-                <li>15% Particule de Génération 3</li>
-              </ul>
-            </template>
-          </span>
           <span class="generator-count">
             Générateurs disponibles: {{ getGeneratorCount(rank) }}
+          </span>
+          <span class="chances">
+            Chances:
+            <template v-if="rank === 1">
+              G1: 100%
+            </template>
+            <template v-else-if="rank === 2">
+              G1: 80%, G2: 20%
+            </template>
+            <template v-else>
+              G1: 50%, G2: 35%, G3: 15%
+            </template>
           </span>
         </div>
         <button 
@@ -80,7 +71,20 @@ export default {
 
     const canObserve = (rank) => {
       const generator = props.generators.find(g => g.rank === rank);
-      return generator && observationService.canObserve(rank, generator.count);
+      if (!generator) return false; // Cannot observe if the generator of this rank doesn't exist
+
+      const hasEnoughGenerators = observationService.canObserve(rank, generator.count);
+
+      // Pour les rangs 1 et 2, vérifier si le joueur a au moins un générateur du rang supérieur
+      if (rank < 3) {
+        const nextRank = rank + 1;
+        const nextGenerator = props.generators.find(g => g.rank === nextRank);
+        const hasNextGenerator = nextGenerator && nextGenerator.count > 0;
+        return hasEnoughGenerators && hasNextGenerator;
+      } else {
+        // Pour le rang 3, seule la condition du nombre de générateurs actuels s'applique
+        return hasEnoughGenerators;
+      }
     };
 
     const observe = (rank) => {
@@ -114,31 +118,49 @@ export default {
 .observation-panel {
   background: #2a2a4a;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.observation-panel h2 {
+    margin-top: 0;
+    color: #00ff9d;
+    border-bottom: 1px solid #3a3a5a;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
 }
 
 .observation-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
 }
 
 .observation-rank {
   background: #1a1a2e;
   border-radius: 6px;
-  padding: 15px;
+  padding: 10px;
   border: 1px solid #3a3a5a;
+  display: flex;
+  flex-direction: column;
+}
+
+.observation-rank h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #e94560;
+    font-size: 1.1em;
 }
 
 .observation-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 10px 0;
-  font-size: 0.9em;
+  gap: 5px;
+  margin: 8px 0;
+  font-size: 0.8em;
   color: #a0a0a0;
+  flex-grow: 1;
 }
 
 .cost {
@@ -150,9 +172,17 @@ export default {
   color: #00ff9d;
 }
 
+.chances {
+  font-style: italic;
+}
+
+.observation-info span {
+    display: block;
+}
+
 button {
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   background: #00ff9d;
   color: #1a1a2e;
   border: none;
@@ -161,6 +191,8 @@ button {
   font-family: 'Roboto Mono', monospace;
   font-weight: bold;
   transition: all 0.2s;
+  font-size: 0.9em;
+  margin-top: 10px;
 }
 
 button:hover:not(.disabled) {
@@ -175,46 +207,49 @@ button.disabled {
 }
 
 .observation-result {
-  margin-top: 20px;
-  padding: 15px;
+  margin-top: 15px;
+  padding: 10px;
   background: #1a1a2e;
   border-radius: 6px;
   border: 1px solid #3a3a5a;
 }
 
+.observation-result h3 {
+    margin-top: 0;
+    color: #e94560;
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+
 .particle-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: 5px;
+  padding: 8px;
   background: #2a2a4a;
   border-radius: 4px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .particle-name {
   color: #00ff9d;
   font-weight: bold;
+  font-size: 0.9em;
 }
 
 .particle-generation {
-  color: #ff9d00;
+    font-size: 0.8em;
+    color: #a0a0a0;
 }
 
 .observation-cost {
-  color: #a0a0a0;
-  font-size: 0.9em;
+     font-size: 0.8em;
+    color: #a0a0a0;
 }
 
-.chances ul {
-  list-style: none;
-  padding-left: 10px;
-  margin: 5px 0;
-}
-
-.chances li {
-  color: #a0a0a0;
-  font-size: 0.9em;
-  margin: 3px 0;
+@media (max-width: 480px) {
+  .observation-controls {
+    grid-template-columns: 1fr;
+  }
 }
 </style> 

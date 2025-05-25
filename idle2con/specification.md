@@ -64,7 +64,7 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 
 ### **Palliers de puissance**
 
-* Paliers : 10, 25, 50, 100, puis tous les 100 jusqu'à 1000
+* Paliers : par puissances de 10 (10, 100, ...)
 * Effet : double la production de la génération concernée
 
 ---

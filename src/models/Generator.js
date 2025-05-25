@@ -1,3 +1,5 @@
+import TickService from '../services/TickService';
+
 export default class Generator {
   constructor(rank, baseCost, growthRates) {
     this.rank = rank;
@@ -13,10 +15,10 @@ export default class Generator {
 
   getCost() {
     // Coût en états selon la spécification
-    const baseStateCost = this.rank === 1 ? 1 : 10;
-    const growthRate = this.rank === 1 ? 1.2 : 
-                      this.rank === 2 ? 1.3 :
-                      this.rank === 3 ? 1.4 : 1.5;
+    const baseStateCost = this.rank === 1;
+    const growthRate = this.rank === 1 ? 1.05 : 
+                      this.rank === 2 ? 1.1 :
+                      this.rank === 3 ? 1.15 : 1.2;
     return Math.floor(baseStateCost * Math.pow(growthRate, this.manualPurchases));
   }
 
@@ -61,7 +63,22 @@ export default class Generator {
   }
 
   purchase(resources, generators) {
-    if (!this.isUnlocked() || !this.canAfford(resources, generators)) {
+    if (!this.isUnlocked()) {
+      return false;
+    }
+
+    // Si le mode debug est activé, ignorer les coûts
+    if (TickService.debug) {
+      this.count++;
+      if (this.count > this.maxCount) {
+        this.maxCount = this.count;
+      }
+      this.manualPurchases++;
+      this.checkFeatureUnlocks();
+      return true;
+    }
+
+    if (!this.canAfford(resources, generators)) {
       return false;
     }
 
@@ -114,6 +131,11 @@ export default class Generator {
     });
 
     return totalProduction * bonusMultiplier;
+  }
+
+  getBaseProduction() {
+    // Retourne la production de base par générateur (sans bonus)
+    return 1/16;
   }
 
   checkUnlockCondition(generators) {

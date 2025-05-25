@@ -15,24 +15,21 @@
 
     <div class="particles-grid">
       <div 
-        v-for="particle in filteredParticles" 
-        :key="particle.id"
+        v-for="particle in groupedFilteredParticles" 
+        :key="particle.type"
         class="particle-card"
         :class="particle.type"
       >
         <div class="particle-header">
           <h3>{{ particle.name }}</h3>
           <span class="generation-badge">G{{ particle.generation }}</span>
+          <span v-if="particle.count > 1" class="particle-count-badge">{{ particle.count }}</span>
         </div>
         
         <div class="particle-details">
           <div class="effect">
             <span class="label">Effet:</span>
-            <span class="value">{{ formatEffect(particle) }}</span>
-          </div>
-          <div class="quantity">
-            <span class="label">Quantité:</span>
-            <span class="value">{{ getParticleCount(particle.type) }}</span>
+            <span class="value">{{ formatEffect(particle.firstParticle) }}</span>
           </div>
         </div>
 
@@ -42,7 +39,7 @@
             @click="prepareFusion(particle.type)"
             class="fuse-button"
           >
-            Fusionner ({{ getParticleCount(particle.type) }}/3)
+            Fusionner ({{ particle.count }}/3)
           </button>
         </div>
       </div>
@@ -68,82 +65,78 @@ import { ParticleFusion } from '../services/ParticleFusion';
 
 export default {
   name: 'ParticleCollection',
-  
-  setup() {
-    const storage = new ParticleStorage();
-    const fusion = new ParticleFusion();
+  props: {
+    particles: {
+      type: Array,
+      required: true
+    }
+  },
+  setup(props, { emit }) {
+    const fusionService = new ParticleFusion();
     const currentGeneration = ref(1);
     const showFusionModal = ref(false);
     const fusionParticleType = ref('');
     const fusionError = ref('');
 
-    const particles = computed(() => storage.loadParticles());
-    
-    const filteredParticles = computed(() => {
-      return particles.value.filter(p => p.generation === currentGeneration.value);
+    const groupedFilteredParticles = computed(() => {
+      const filtered = props.particles.filter(p => p.generation === currentGeneration.value);
+      const grouped = {};
+      filtered.forEach(particle => {
+        if (!grouped[particle.type]) {
+          grouped[particle.type] = {
+            type: particle.type,
+            name: particle.name,
+            generation: particle.generation,
+            count: 0,
+            firstParticle: particle
+          };
+        }
+        grouped[particle.type].count++;
+      });
+      return Object.values(grouped);
     });
 
-    const getParticleCount = (type) => {
-      return particles.value.filter(p => p.type === type).length;
-    };
-
     const canFuse = (type) => {
-      return fusion.canFuseParticles(type);
+      const particleGroup = groupedFilteredParticles.value.find(p => p.type === type);
+      return particleGroup && fusionService.canFuseParticles(type, particleGroup.count);
     };
 
     const formatEffect = (particle) => {
-      const value = particle.getEffectValue() * 100;
-      switch(particle.type) {
-        case 'electron':
-        case 'muon':
-        case 'tau':
-          return `+${value}% dt`;
-        case 'neutrinoE':
-        case 'neutrinoMu':
-        case 'neutrinoTau':
-          return `+${value}% générateur ${particle.generation}`;
-        case 'quarkUp':
-        case 'quarkCharm':
-        case 'quarkTruth':
-          return `+${value}% production G1`;
-        case 'quarkDown':
-        case 'quarkStrange':
-        case 'quarkBeauty':
-          return `-${value}% coût G${particle.generation + 1}`;
-        default:
-          return 'Effet inconnu';
+      if (!particle || typeof particle.getEffectDescription !== 'function') {
+        return 'Effet inconnu ou méthode manquante';
       }
+      return particle.getEffectDescription();
     };
 
     const prepareFusion = (type) => {
       fusionParticleType.value = type;
-      const requirements = fusion.getFusionRequirements(type);
-      if (requirements.current < requirements.required) {
-        fusionError.value = `Il faut ${requirements.required} particules pour fusionner`;
-        return;
+      const particleGroup = groupedFilteredParticles.value.find(p => p.type === type);
+      const currentCount = particleGroup ? particleGroup.count : 0;
+
+      if (fusionService.canFuseParticles(type, currentCount)) {
+        showFusionModal.value = true;
+      } else {
+        fusionError.value = `Il faut 3 particules pour fusionner`;
       }
-      showFusionModal.value = true;
     };
 
     const confirmFusion = () => {
       try {
-        const newParticle = fusion.fuseParticles(fusionParticleType.value);
+        emit('fuse-particles', { type: fusionParticleType.value });
         showFusionModal.value = false;
         fusionError.value = '';
-        // Émettre un événement pour notifier le parent
-        emit('particle-fused', newParticle);
       } catch (error) {
+        console.error('Erreur lors de la fusion:', error);
         fusionError.value = error.message;
       }
     };
 
     return {
       currentGeneration,
-      filteredParticles,
+      groupedFilteredParticles,
       showFusionModal,
       fusionParticleType,
       fusionError,
-      getParticleCount,
       canFuse,
       formatEffect,
       prepareFusion,
@@ -155,7 +148,7 @@ export default {
 
 <style scoped>
 .particle-collection {
-  padding: 20px;
+  padding: 15px;
   background: #1a1a2e;
   color: #e6e6e6;
   border-radius: 8px;
@@ -163,18 +156,20 @@ export default {
 
 .generation-tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
 .generation-tabs button {
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: #16213e;
   border: 1px solid #0f3460;
   color: #e6e6e6;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 0.9em;
 }
 
 .generation-tabs button.active {
@@ -184,16 +179,20 @@ export default {
 
 .particles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .particle-card {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 8px;
-  padding: 15px;
+  padding: 10px;
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 .particle-card:hover {
@@ -205,39 +204,78 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.particle-header h3 {
+  margin: 0;
+  font-size: 1em;
+  flex-grow: 1;
+  margin-right: 5px;
 }
 
 .generation-badge {
   background: #e94560;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.7em;
+  flex-shrink: 0;
+}
+
+.particle-count-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #00ff9d;
+  color: #1a1a2e;
+  border-radius: 50%;
+  padding: 4px 6px;
+  font-size: 0.7em;
+  font-weight: bold;
+  min-width: 18px;
+  text-align: center;
+  border: 1px solid #1a1a2e;
+  z-index: 1;
 }
 
 .particle-details {
-  margin: 10px 0;
+  margin: 8px 0;
+  flex-grow: 1;
 }
 
 .effect, .quantity {
   display: flex;
   justify-content: space-between;
-  margin: 5px 0;
+  margin: 3px 0;
+  font-size: 0.9em;
 }
 
 .label {
   color: #8b8b8b;
 }
 
+.value {
+  color: #e6e6e6;
+  font-family: 'Roboto Mono', monospace;
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.particle-actions {
+  margin-top: 10px;
+}
+
 .fuse-button {
   width: 100%;
-  padding: 8px;
+  padding: 6px;
   background: #e94560;
   border: none;
   border-radius: 4px;
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 0.9em;
 }
 
 .fuse-button:hover {
@@ -248,44 +286,88 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1000;
 }
 
 .modal-content {
-  background: #16213e;
+  background: #1a1a2e;
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #0f3460;
-  min-width: 300px;
+  text-align: center;
+  color: #e6e6e6;
+}
+
+.modal-content h3 {
+  color: #00ff9d;
+  margin-top: 0;
+  margin-bottom: 15px;
 }
 
 .modal-actions {
-  display: flex;
-  gap: 10px;
   margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
 }
 
 .confirm-button, .cancel-button {
   padding: 8px 16px;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .confirm-button {
-  background: #e94560;
-  border: none;
-  color: white;
+  background: #00ff9d;
+  color: #1a1a2e;
+}
+
+.confirm-button:hover {
+  background: #00cc7a;
 }
 
 .cancel-button {
-  background: transparent;
-  border: 1px solid #0f3460;
-  color: #e6e6e6;
+  background: #e94560;
+  color: white;
+}
+
+.cancel-button:hover {
+  background: #d13b54;
+}
+
+@media (max-width: 480px) {
+  .particles-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .particle-card {
+    padding: 8px;
+  }
+
+  .particle-header h3 {
+    font-size: 1em;
+  }
+
+  .generation-badge {
+    padding: 0 4px;
+    font-size: 0.6em;
+  }
+
+  .effect, .quantity {
+    font-size: 0.8em;
+  }
+
+  .fuse-button {
+    font-size: 0.8em;
+    padding: 5px;
+  }
 }
 </style> 
