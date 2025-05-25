@@ -671,9 +671,10 @@ body {
 
 .game-container {
   display: flex;
-  flex-wrap: wrap; /* Permettre aux sections de passer à la ligne sur petits écrans */
-  padding: 15px; /* Reduced padding */
-  gap: 15px; /* Reduced gap */
+  flex-direction: column; /* Stack tabs-nav and game-section vertically */
+  padding: 15px; 
+  /* flex-wrap: wrap; /* No longer needed for direct children */
+  /* gap: 15px; /* No longer needed for direct children */
   flex-grow: 1;
 }
 
@@ -769,9 +770,9 @@ body {
 /* Media Queries pour le Responsive Design */
 @media (max-width: 768px) {
   .game-container {
-    flex-direction: column; /* Empiler les sections sur petits écrans */
-    padding: 10px;
-    gap: 10px;
+    /* flex-direction: column; /* Already column from base style */
+    padding: 10px; /* Adjust padding for smaller screens */
+    /* gap: 10px; /* No longer needed for direct children */
   }
 
   .game-section {
