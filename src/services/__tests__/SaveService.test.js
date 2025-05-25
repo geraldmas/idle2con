@@ -108,9 +108,19 @@ describe('SaveService', () => {
         initialGameState.resources.set('Potentiel', initialPotentiel);
         initialGameState.generators.push(initialGen1);
 
+        // Add États resource for testing its production
+        const initialEtats = new Resource('États', 0); // Start with 0 États
+        initialGameState.resources.set('États', initialEtats);
+        const initialEtatsValue = initialEtats.getValue();
+
         // Set initial observation counts for testing persistence
         initialGameState.observationCount = 5;
         initialGameState.antiparticleObservationCount = 2;
+
+        // Add mock antiparticles for testing persistence
+        const mockAntiparticle1 = new Particle('AntiTestron', 1, 'antitesticle', { effectValue: -1 });
+        initialGameState.antiparticles = [mockAntiparticle1];
+
 
         // 2. Save this initial state
         saveService.saveGame(initialGameState);
@@ -179,6 +189,18 @@ describe('SaveService', () => {
         expect(loadedGameState.observationCount).toBe(5);
         expect(loadedGameState.antiparticleObservationCount).toBe(2);
 
+        // Assert that antiparticles were loaded correctly
+        expect(loadedGameState.antiparticles).toBeDefined();
+        expect(Array.isArray(loadedGameState.antiparticles)).toBe(true);
+        expect(loadedGameState.antiparticles.length).toBe(initialGameState.antiparticles.length);
+        if (initialGameState.antiparticles.length > 0) {
+            expect(loadedGameState.antiparticles[0].name).toBe(initialGameState.antiparticles[0].name);
+            expect(loadedGameState.antiparticles[0].generation).toBe(initialGameState.antiparticles[0].generation);
+            // Note: The Particle mock in this test file might need to be adjusted if full effect object comparison is needed
+            // For now, checking name and generation is a good indicator.
+        }
+
+
         // 4. Initialize TickService with the loaded state
         TickService.stop(); 
         TickService.setGameState(loadedGameState);
@@ -201,8 +223,23 @@ describe('SaveService', () => {
         // Production per tick = 2 * (1/32) * 1 * 1 * 0.1 = 0.00625
         // Total production = 0.00625 * 5 = 0.03125
         const expectedFinalValue = initialPotentielValue + (0.00625 * tickCount);
+        const finalEtatsValue = loadedGameState.resources.get('États').getValue();
         
         expect(finalPotentielValue).toBeGreaterThan(initialPotentielValue);
         expect(finalPotentielValue).toBeCloseTo(expectedFinalValue);
+
+        // New assertions for États:
+        // With Potentiel starting at 10 and increasing, and nextStateMilestone starting at 1,
+        // we expect to gain at least one État on the first tick.
+        // Over 5 ticks, Potentiel stays well above typical early État milestones.
+        expect(finalEtatsValue).toBeGreaterThan(initialEtatsValue); 
+        // For a more precise check (optional, can be complex):
+        // Tick 1: Pot_load=10. États_milestone_init=1. Gain 1 État. totalEarned=1. new_milestone=2^(1/10)~1.07. États_val=1.
+        // Tick 2: Pot~10.006. Gain 1 État. totalEarned=2. new_milestone=2^(2/10)~1.14. États_val=2.
+        // Tick 3: Pot~10.012. Gain 1 État. totalEarned=3. new_milestone=2^(3/10)~1.23. États_val=3.
+        // Tick 4: Pot~10.018. Gain 1 État. totalEarned=4. new_milestone=2^(4/10)~1.31. États_val=4.
+        // Tick 5: Pot~10.024. Gain 1 État. totalEarned=5. new_milestone=2^(5/10)~1.41. États_val=5.
+        // So, after 5 ticks, we expect 5 États.
+        expect(finalEtatsValue).toBe(5); 
     });
 });

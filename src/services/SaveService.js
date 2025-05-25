@@ -38,7 +38,8 @@ export class SaveService {
         supersymmetricParticlesUnlocked: gameState.supersymmetricParticlesUnlocked || false,
         antipotential: gameState.antipotential || 0,
         observationCount: gameState.observationCount || 0,
-        antiparticleObservationCount: gameState.antiparticleObservationCount || 0
+        antiparticleObservationCount: gameState.antiparticleObservationCount || 0,
+        antiparticles: gameState.antiparticles ? gameState.antiparticles.map(ap => ap.toJSON()) : [] // Save serialized antiparticles
       };
 
       console.log('Données à sauvegarder:', saveData);

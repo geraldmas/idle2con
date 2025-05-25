@@ -3,9 +3,11 @@ export class Particle {
         this.name = name;
         this.generation = generation;
         this.type = type;
-        this.effect = effect;
+        this.effect = effect || {}; // Default to empty object if effect is undefined/null
         this.id = this.generateId();
-        this.createdAt = new Date();
+        // Ensure createdAt is always a valid Date. If created anew, it's 'new Date()'.
+        // If loaded via fromJSON, fromJSON will handle setting it.
+        this.createdAt = new Date(); 
     }
 
     generateId() {
@@ -38,14 +40,27 @@ export class Particle {
     }
 
     static fromJSON(json) {
-        const particle = new Particle(
+        // Effect defaulting is handled by constructor if json.effect is null/undefined
+        const particle = new Particle( 
             json.name,
             json.generation,
             json.type,
             json.effect
         );
-        particle.id = json.id;
-        particle.createdAt = new Date(json.createdAt);
+        
+        // Explicitly set id and createdAt from JSON data, overriding constructor defaults
+        particle.id = json.id; 
+        
+        if (json.createdAt) {
+            const loadedDate = new Date(json.createdAt);
+            particle.createdAt = !isNaN(loadedDate.getTime()) ? loadedDate : new Date(); // Default to now if invalid
+        } else {
+            // If createdAt is missing in JSON, what should it be?
+            // Using 'now' (from constructor) might be misleading for a loaded particle.
+            // For robustness against bad data, new Date() is a fallback.
+            // Or, if createdAt is critical and always expected, could throw error or log warning.
+            particle.createdAt = new Date(); // Fallback if missing from JSON
+        }
         return particle;
     }
 

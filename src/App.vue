@@ -305,11 +305,27 @@ export default {
         const loadedParticles = (savedData.particles || []).map(p => Particle.fromJSON(p));
 
         // Mettre à jour l'état du jeu avec les nouvelles instances réactives
-        // Utiliser Object.assign ou copier manuellement les propriétés pour conserver la réactivité de gameState
-        // Option 1: copier manuellement (plus sûr pour la réactivité racine)
-        gameState.resources = reactive(loadedResources);
-        gameState.generators = reactive(loadedGenerators);
-        gameState.particles = loadedParticles; // particles est déjà géré comme un tableau
+        // Use mutation methods to update existing reactive collections
+
+        // For gameState.resources
+        gameState.resources.clear();
+        loadedResources.forEach((resource, name) => {
+            gameState.resources.set(name, resource); // resource is already markRaw
+        });
+
+        // For gameState.generators
+        gameState.generators.length = 0;
+        loadedGenerators.forEach(generator => {
+            gameState.generators.push(generator); // generator is already markRaw
+        });
+        // The Gen1 existence check later will re-sort if it adds a default Gen1.
+
+        // For gameState.particles
+        gameState.particles.length = 0;
+        loadedParticles.forEach(particle => {
+            gameState.particles.push(particle);
+        });
+        
         gameState.prestigeLevel = savedData.prestigeLevel || 0;
         gameState.prestigeMultiplier = savedData.prestigeMultiplier || 1;
         gameState.antiparticlesUnlocked = savedData.antiparticlesUnlocked || false;
@@ -317,6 +333,15 @@ export default {
         gameState.antipotential = savedData.antipotential || 0; // Ensure antipotential is loaded
         gameState.observationCount = savedData.observationCount || 0;
         gameState.antiparticleObservationCount = savedData.antiparticleObservationCount || 0;
+        
+        // Load antiparticles
+        if (savedData.antiparticles && Array.isArray(savedData.antiparticles)) {
+            const loadedAntiparticles = savedData.antiparticles.map(apData => Particle.fromJSON(apData));
+            gameState.antiparticles.length = 0; // Clear existing
+            loadedAntiparticles.forEach(ap => gameState.antiparticles.push(ap));
+        } else {
+            gameState.antiparticles.length = 0; // Default to empty if not in save or not an array
+        }
          // antiparticleEffects sera recalculé au premier tick
 
         // Mettre à jour particleStorage avec les particules chargées
