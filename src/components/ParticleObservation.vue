@@ -86,37 +86,48 @@ export default {
     }
   },
   setup(props, { emit }) {
-    const gameState = inject('gameState');
+    const gameState = inject('gameState', {
+      antipotential: 0,
+      observationCount: 0,
+      antiparticleObservationCount: 0
+    });
+    
     const observationService = new ObservationService();
     const prestigeService = new PrestigeService();
 
     const lastObservation = ref(null);
     
-    const currentAntipotential = computed(() => gameState?.antipotential || 0);
-    const areAntiparticlesUnlocked = computed(() => prestigeService.isAntiparticlesUnlocked(gameState));
+    const currentAntipotential = computed(() => gameState?.antipotential ?? 0);
+    const areAntiparticlesUnlocked = computed(() => {
+      if (!gameState) return false;
+      return prestigeService.isAntiparticlesUnlocked(gameState);
+    });
 
     const getGeneratorCount = (rank) => {
+      if (!props.generators) return 0;
       const generator = props.generators.find(g => g.rank === rank);
       return generator ? generator.count : 0;
     };
 
     const canObserveParticle = (rank) => {
+      if (!props.generators || !gameState) return false;
       const generator = props.generators.find(g => g.rank === rank);
       return generator ? observationService.canObserveParticle(rank, generator.count, gameState) : false;
     };
 
     const getParticleObservationCostDisplay = () => {
-        // gameState is injected and available
-        return observationService.getParticleObservationCost(gameState.observationCount);
+      if (!gameState) return 0;
+      return observationService.getParticleObservationCost(gameState.observationCount);
     };
 
     const canObserveAntiparticle = computed(() => {
-        return observationService.canObserveAntiparticle(gameState, prestigeService);
+      if (!gameState) return false;
+      return observationService.canObserveAntiparticle(gameState, prestigeService);
     });
 
-     const getAntiparticleObservationCostDisplay = () => {
-        // gameState and prestigeService are available
-        return observationService.getAntiparticleObservationCost(prestigeService, gameState.antiparticleObservationCount);
+    const getAntiparticleObservationCostDisplay = () => {
+      if (!gameState) return 0;
+      return observationService.getAntiparticleObservationCost(prestigeService, gameState.antiparticleObservationCount);
     };
 
     const observeParticle = (rank) => {

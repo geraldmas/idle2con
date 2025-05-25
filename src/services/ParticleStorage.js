@@ -3,25 +3,27 @@ import { Particle } from '../models/Particle';
 export class ParticleStorage {
     constructor() {
         this.storageKey = 'quantum_factory_particles';
-        this._particles = null; // Cache pour les particules
+        this._particles = []; // Initialiser comme un tableau vide au lieu de null
         this.loadParticles(); // Chargement initial
     }
 
     get particles() {
-        if (this._particles === null) {
-            this._particles = this.loadParticles();
+        if (!Array.isArray(this._particles)) {
+            this._particles = [];
         }
         return this._particles;
     }
 
     set particles(value) {
-        this._particles = value;
+        this._particles = Array.isArray(value) ? value : [];
         this.saveParticles();
     }
 
     saveParticles() {
         try {
-            if (!this._particles) return;
+            if (!Array.isArray(this._particles)) {
+                this._particles = [];
+            }
             const particlesData = this._particles.map(particle => particle.toJSON());
             localStorage.setItem(this.storageKey, JSON.stringify(particlesData));
         } catch (error) {
@@ -38,7 +40,7 @@ export class ParticleStorage {
             }
             
             const parsedData = JSON.parse(particlesData);
-            this._particles = parsedData.map(data => Particle.fromJSON(data));
+            this._particles = Array.isArray(parsedData) ? parsedData.map(data => Particle.fromJSON(data)) : [];
             return this._particles;
         } catch (error) {
             console.error('Erreur lors du chargement des particules:', error);
@@ -48,7 +50,7 @@ export class ParticleStorage {
     }
 
     addParticle(particle) {
-        if (!this._particles) {
+        if (!Array.isArray(this._particles)) {
             this._particles = [];
         }
         this._particles.push(particle);
@@ -56,7 +58,10 @@ export class ParticleStorage {
     }
 
     removeParticle(particleId) {
-        if (!this._particles) return;
+        if (!Array.isArray(this._particles)) {
+            this._particles = [];
+            return;
+        }
         this._particles = this._particles.filter(p => p.id !== particleId);
         this.saveParticles();
     }

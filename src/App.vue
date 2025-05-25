@@ -147,9 +147,12 @@ export default {
       antiparticlesUnlocked: false,
       supersymmetricParticlesUnlocked: false,
       antiparticleEffects: {},
-      antipotential: 0, // Ensure this was already there or add it
-      observationCount: 0, // New counter for normal particles
-      antiparticleObservationCount: 0 // New counter for antiparticles
+      antipotential: 0,
+      observationCount: 0,
+      antiparticleObservationCount: 0,
+      // Initialisation des propriétés manquantes
+      particleStorage: new ParticleStorage(),
+      prestigeService: new PrestigeService()
     });
 
     const isDebugEnabled = ref(false);
@@ -281,7 +284,6 @@ export default {
         const loadedResources = new Map();
         savedData.resources.forEach(resourceData => {
             const resource = markRaw(new Resource(resourceData.name, resourceData.value));
-            // Copier les autres propriétés sauvegardées
             resource.totalEarned = resourceData.totalEarned;
             resource.nextStateMilestone = resourceData.nextStateMilestone;
             if (resourceData.generators !== undefined) {
@@ -292,57 +294,58 @@ export default {
 
         const loadedGenerators = savedData.generators.map(generatorData => {
              const generator = markRaw(new Generator(generatorData.rank, generatorData.baseCost, generatorData.growthRates));
-             // Copier les autres propriétés sauvegardées
-             generator.count = generatorData.count || 0; // Default to 0 if undefined
+             generator.count = generatorData.count || 0;
              generator.reachedMilestones = generatorData.reachedMilestones;
-             generator.maxCount = generatorData.maxCount || 0; // S'assurer de charger maxCount, default to 0
-             generator.manualPurchases = generatorData.manualPurchases || 0; // S'assurer de charger manualPurchases, default to 0
-             // Note: _isUnlocked est une ref, elle sera initialisée correctement dans le constructor
-             // et mise à jour par le tick après le chargement de tous les générateurs.
+             generator.maxCount = generatorData.maxCount || 0;
+             generator.manualPurchases = generatorData.manualPurchases || 0;
              return generator;
         });
 
-        const loadedParticles = (savedData.particles || []).map(p => Particle.fromJSON(p));
+        // S'assurer que gameState.particles est initialisé comme un tableau vide
+        if (!Array.isArray(gameState.particles)) {
+            gameState.particles = [];
+        }
+
+        // Charger les particules
+        const loadedParticles = Array.isArray(savedData.particles) ? savedData.particles.map(p => Particle.fromJSON(p)) : [];
 
         // Mettre à jour l'état du jeu avec les nouvelles instances réactives
-        // Use mutation methods to update existing reactive collections
-
-        // For gameState.resources
         gameState.resources.clear();
         loadedResources.forEach((resource, name) => {
-            gameState.resources.set(name, resource); // resource is already markRaw
+            gameState.resources.set(name, resource);
         });
 
-        // For gameState.generators
-        gameState.generators.length = 0;
+        // Réinitialiser et remplir le tableau des générateurs
+        gameState.generators = [];
         loadedGenerators.forEach(generator => {
-            gameState.generators.push(generator); // generator is already markRaw
+            gameState.generators.push(generator);
         });
-        // The Gen1 existence check later will re-sort if it adds a default Gen1.
 
-        // For gameState.particles
-        gameState.particles.length = 0;
+        // Réinitialiser et remplir le tableau des particules
+        gameState.particles = [];
         loadedParticles.forEach(particle => {
             gameState.particles.push(particle);
         });
         
+        // Mettre à jour les autres propriétés
         gameState.prestigeLevel = savedData.prestigeLevel || 0;
         gameState.prestigeMultiplier = savedData.prestigeMultiplier || 1;
         gameState.antiparticlesUnlocked = savedData.antiparticlesUnlocked || false;
         gameState.supersymmetricParticlesUnlocked = savedData.supersymmetricParticlesUnlocked || false;
-        gameState.antipotential = savedData.antipotential || 0; // Ensure antipotential is loaded
+        gameState.antipotential = savedData.antipotential || 0;
         gameState.observationCount = savedData.observationCount || 0;
         gameState.antiparticleObservationCount = savedData.antiparticleObservationCount || 0;
         
-        // Load antiparticles
-        if (savedData.antiparticles && Array.isArray(savedData.antiparticles)) {
-            const loadedAntiparticles = savedData.antiparticles.map(apData => Particle.fromJSON(apData));
-            gameState.antiparticles.length = 0; // Clear existing
-            loadedAntiparticles.forEach(ap => gameState.antiparticles.push(ap));
-        } else {
-            gameState.antiparticles.length = 0; // Default to empty if not in save or not an array
+        // Initialiser le tableau des antiparticules s'il n'existe pas
+        if (!Array.isArray(gameState.antiparticles)) {
+            gameState.antiparticles = [];
         }
-         // antiparticleEffects sera recalculé au premier tick
+        
+        // Charger les antiparticules
+        if (Array.isArray(savedData.antiparticles)) {
+            const loadedAntiparticles = savedData.antiparticles.map(apData => Particle.fromJSON(apData));
+            gameState.antiparticles = loadedAntiparticles;
+        }
 
         // Mettre à jour particleStorage avec les particules chargées
         particleStorage.particles = loadedParticles;
@@ -351,29 +354,23 @@ export default {
         let gen1Instance = gameState.generators.find(gen => gen.rank === 1);
         if (!gen1Instance) {
             console.warn("Gen1 was missing from loaded save data or save data was empty. Re-initializing Gen1.");
-            // Create a default Gen1, matching the structure from initializeGameData
-            // Growth rates here are for consistency, actual ones are from Generator class methods
             const defaultGen1 = markRaw(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.05 })); 
             defaultGen1.name = 'Générateur Quantique I';
-            defaultGen1.count = 1; // Default to 1 as it's essential. If save had it as 0, it would have loaded as 0.
-                                   // This path is for when Gen1 is *missing* entirely.
-            
-            // Add the new Gen1 and re-sort if necessary to maintain rank order
-            gameState.generators.push(defaultGen1); // Add then sort is safer than unshift if array was empty
+            defaultGen1.count = 1;
+            gameState.generators.push(defaultGen1);
             gameState.generators.sort((a, b) => a.rank - b.rank);
-            gen1Instance = defaultGen1; // gen1Instance is now the newly created one
+            gen1Instance = defaultGen1;
         }
 
-        // Ensure Potentiel resource 'generators' count (n) is updated immediately after load
+        // Ensure Potentiel resource 'generators' count is updated
         const potentielResource = gameState.resources.get('Potentiel');
         if (potentielResource) {
             const currentGen1 = gameState.generators.find(gen => gen.rank === 1);
             if (currentGen1) {
                 potentielResource.setGenerators(currentGen1.count);
             } else {
-                // Should not happen if the above check and fix for Gen1 works
                 console.error("Critical error: Gen1 still missing after load and attempted fix.");
-                potentielResource.setGenerators(0); // Fallback to 0 production
+                potentielResource.setGenerators(0);
             }
         }
       }
