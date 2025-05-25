@@ -53,43 +53,37 @@ export class PrestigeService {
         // Réinitialiser les ressources et structures
         gameState.resources.forEach(resource => {
             // Réinitialisation spécifique de Potentiel et États
-            if (resource.name === 'Potentiel') resource.value = 0;
-            if (resource.name === 'États') {
-                 resource.value = 0; // Réinitialiser les états
-                 // Réinitialiser le prochain palier d'état à sa valeur initiale (1)
-                 resource.nextStateMilestone = 1;
-                 // Assurez-vous que la propriété totalEarned est également réinitialisée pour les États si elle influence la logique de seuil
-                 if (resource.totalEarned !== undefined) { // Vérifier si la propriété existe
-                     resource.totalEarned = 0;
-                 }
+            if (resource.name === 'Potentiel') {
+                resource.value = 0;
+                resource.generators = 0;
             }
-            // Vous pourriez vouloir réinitialiser d'autres ressources ici si nécessaire selon la spec.
-             // Si d'autres ressources ont une propriété nextStateMilestone ou similaire, réinitialisez-la à null ou à sa valeur par défaut.
-             if (resource.name !== 'États' && resource.nextStateMilestone !== undefined) {
-                 resource.nextStateMilestone = null; // Ou sa valeur par défaut si différente de null
-             }
+            if (resource.name === 'États') {
+                resource.value = 0;
+                resource.nextStateMilestone = 1;
+                resource.totalEarned = 0;
+            }
         });
 
         if (Array.isArray(gameState.generators)) {
             gameState.generators.forEach(generator => {
                 if (generator && typeof generator.count === 'number') {
-                    generator.count = 0; // Réinitialiser le compte de tous les générateurs
-                     // Réinitialiser les paliers atteints
-                     if (Array.isArray(generator.reachedMilestones)) {
-                         generator.reachedMilestones = [];
-                     }
+                    generator.count = 0;
+                    generator.maxCount = 0;
+                    generator.manualPurchases = 0;
+                    generator.reachedMilestones = [];
                 }
             });
-             // Assurez-vous que le Générateur 1 redémarre avec 1
-             const gen1 = gameState.generators.find(g => g.rank === 1);
-             if(gen1) {
-                 gen1.count = 1;
-                  // Mettre à jour la ressource Potentiel pour refléter le nouveau nombre de générateurs
-                  const potentielResource = gameState.resources.get('Potentiel');
-                  if (potentielResource) {
-                      potentielResource.setGenerators(gen1.count);
-                  }
-             }
+            // Assurez-vous que le Générateur 1 redémarre avec 1
+            const gen1 = gameState.generators.find(g => g.rank === 1);
+            if(gen1) {
+                gen1.count = 1;
+                gen1.maxCount = 1;
+                // Mettre à jour la ressource Potentiel pour refléter le nouveau nombre de générateurs
+                const potentielResource = gameState.resources.get('Potentiel');
+                if (potentielResource) {
+                    potentielResource.setGenerators(gen1.count);
+                }
+            }
         }
 
         // Perdre TOUTES les particules au prestige
@@ -99,9 +93,9 @@ export class PrestigeService {
         gameState.antipotential = (gameState.antipotential || 0) + antipotentialGain;
 
         // Mettre à jour le niveau de prestige et le multiplicateur dans gameState
-        // Assurer que ces propriétés existent dans gameState ou y sont ajoutées
         gameState.prestigeLevel = (gameState.prestigeLevel || 0) + 1;
         gameState.prestigeMultiplier = Math.pow(1.5, gameState.prestigeLevel);
+        
         // Débloquer les antiparticules si c'est le premier prestige
         if (gameState.prestigeLevel === 1) {
             gameState.antiparticlesUnlocked = true;

@@ -27,8 +27,8 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 
 | Ressource    | Description                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Potentiel    | Ressource principale, produite selon la formule p(t+dt)=p(t)+n*a*dt avec a=1/16 et dt=1, n = nombre de générateurs de 1er rang |
-| États        | Obtenus à chaque palier puissance de 2 de potentiel (1, 2, 4, 8, 16, etc.)                                                        |
+| Potentiel    | Ressource principale, produite selon la formule p(t+dt)=p(t)+n*a*dt avec a=1/32 et dt=1, n = nombre de générateurs de 1er rang |
+| États        | Obtenus à chaque palier puissance de 2^1/10 de potentiel (1, 2^1/10, 2^1/5, 2^3/10, ... etc.)                                                        |
 | Observations | Obtenues en sacrifiant 10 générateurs                                                                                          |
 
 ---
@@ -39,32 +39,32 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 
 * Départ : 1 générateur
 * Coût initial : 1 état
-* Croissance : exponentielle, base 1.2
+* Croissance : exponentielle, base 1.2 (modifié, voir code actuel)
 
 ### **Générateur 2**
 
 * Débloqué après avoir acheté 10 générateurs 1
 * Coût : 10 générateurs 1 + 10 états
-* Croissance : base 1.1 (gén. 1), base 1.3 (états)
+* Croissance : base 1.1 (gén. 1), base 1.3 (états)(modifié, voir code actuel)
 * Débloque les **observations**
 
 ### **Générateur 3**
 
 * Débloqué après 10 générateurs 2
 * Coût : en générateurs 2 + états
-* Croissance : base 1.2 (gén. 1), base 1.4 (états)
+* Croissance : base 1.2 (gén. 1), base 1.4 (états)(modifié, voir code actuel)
 * Débloque la **fusion et activation de particules** + **observations de génération 2**
 
 ### **Générateur 4**
 
 * Débloqué après 10 générateurs 3
 * Coût : en générateurs 3 + états
-* Croissance : base 1.3 (gén. 1), base 1.5 (états)
+* Croissance : base 1.3 (gén. 1), base 1.5 (états)(modifié, voir code actuel)
 * Débloque le **système d'amélioration** + **observations de génération 3**
 
 ### **Palliers de puissance**
 
-* Paliers : par puissances de 10 (10, 100, ...)
+* Paliers : par puissances de 3 (10, 30, ...)
 * Effet : double la production de la génération concernée
 
 ---
@@ -74,7 +74,7 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 ### **Obtention des particules**
 
 * Sacrifice de générateurs contre des particules aléatoires
-* Coût de base : 10 générateurs, croissance exponentielle base 1.2
+* Coût de base : 10 générateurs, croissance exponentielle base 1.1
 
 | Rang sacrifié | Générations obtenues possibles                                        |
 | ------------- | --------------------------------------------------------------------- |
