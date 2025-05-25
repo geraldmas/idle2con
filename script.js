@@ -461,6 +461,22 @@ function buyGenerator(generatorId) {
         numToBuy = new Decimal(gameData.currentBuyMultiplier);
     }
 
+    // Defensive check: Ensure numToBuy is a Decimal instance.
+    // This is to guard against unexpected scenarios where it might be a primitive number.
+    if (!(numToBuy instanceof Decimal)) {
+        console.warn(`numToBuy was not a Decimal instance. Type: ${typeof numToBuy}, Value: ${numToBuy}. Converting to Decimal.`);
+        // Attempt to convert it to a Decimal. If it was supposed to be from gameData.currentBuyMultiplier,
+        // this logic path implies gameData.currentBuyMultiplier itself might not have been a 'MAX' string
+        // and new Decimal() above might have failed or returned a primitive (highly unlikely for std Decimal.js).
+        // Or, calculateMaxBuy returned a primitive (also unlikely from its definition).
+        // Fallback to 1 if conversion is dubious.
+        let potentialNum = Number(numToBuy); // Try to get a clean number from it
+        if (isNaN(potentialNum)) {
+            potentialNum = 1; // Safe fallback
+        }
+        numToBuy = new Decimal(potentialNum);
+    }
+
     if (numToBuy.isZero()) {
         console.log("Cannot buy 0 units.");
         return;
