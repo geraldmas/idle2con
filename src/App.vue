@@ -14,27 +14,35 @@
       <section class="game-section production-section">
         <h2>Production Quantique</h2>
         <div class="resources-panel">
-          <div v-for="resource in resourcesData" :key="resource.name" class="resource">
+          <div v-for="resource in gameState.resources.values()" :key="resource.name" class="resource">
             <span class="resource-name">{{ resource.name }}</span>
-            <span class="resource-value">{{ formatNumber(resource.value) }}</span>
-            <span class="resource-potential">(+{{ formatNumber(resource.potential) }}/s)</span>
+            <span class="resource-value">{{ formatNumber(resource.getValue()) }}</span>
+            <span v-if="resource.name === 'Potentiel'" class="resource-potential">
+              (Formule: {{ resource.generators }} * 1/16 * {{ formatNumber(resource.dt) }} /s)
+              <br>
+              (dt: {{ formatNumber(resource.dt) }})
+            </span>
             <span v-if="resource.name === 'Potentiel'" class="resource-generators">
               Générateurs: {{ resource.generators }}
+            </span>
+            <span v-if="resource.name === 'États' && resource.nextStateMilestone !== null" class="resource-next-milestone">
+              Prochain état à {{ formatNumber(resource.nextStateMilestone) }} Potentiel
             </span>
           </div>
         </div>
         <div class="generators-panel">
           <h3>Générateurs</h3>
           <Generator
-            v-for="(generator, index) in generators"
+            v-for="(generator, index) in gameState.generators"
             :key="generator.name"
             :name="generator.name"
             :count="generator.count"
             :production="generator.getProduction()"
             :cost="generator.getCost()"
-            :is-unlocked="generator.isUnlocked(TickService.getGameState())"
-            :unlock-requirement="generator.unlockRequirement ? '10 générateurs précédents' : ''"
-            :can-afford="generator.canAfford(resourcesData.find(r => r.name === 'États')?.value || 0)"
+            :generator-cost="generator.getGeneratorCost()"
+            :is-unlocked="generator.isUnlocked()"
+            :unlock-requirement="generator.rank > 1 ? '10 générateurs précédents' : ''"
+            :can-afford="generator.canAfford(gameState.resources.get('États'), gameState.generators)"
             @buy="buyGenerator(index)"
           />
         </div>
@@ -66,7 +74,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import Resource from './models/Resource';
 import Generator from './models/Generator';
 import TickService from './services/TickService';
@@ -78,12 +86,17 @@ export default {
     Generator: GeneratorComponent
   },
   setup() {
-    const resourcesData = ref([]);
+    // État local réactif pour l'affichage
+    const gameState = reactive({
+      resources: new Map(),
+      generators: []
+    });
+
     const isDebugEnabled = ref(false);
-    const generators = ref([]);
     let updateInterval;
 
     const formatNumber = (num) => {
+      if (num === undefined || num === null) return '0';
       if (num >= 1000000) {
         return (num / 1000000).toFixed(2) + 'M';
       }
@@ -98,92 +111,76 @@ export default {
       TickService.setDebug(isDebugEnabled.value);
     };
 
-    const updateResources = () => {
-      resourcesData.value = TickService.getResources().map(resource => ({
-        name: resource.name,
-        value: resource.getValue(),
-        potential: resource.getPotential(),
-        generators: resource.getGenerators()
-      }));
-    };
-
     const buyGenerator = (index) => {
-      const generator = generators.value[index];
-      const states = TickService.getResource('États');
+      // Obtenir le générateur depuis l'état local
+      const generator = gameState.generators[index];
+      // Obtenir la ressource États depuis l'état local
+      const states = gameState.resources.get('États');
       
-      if (states && generator.buy(states.getValue())) {
-        states.setValue(states.getValue() - generator.getCost());
-        updateResources();
+      // Appeler la méthode purchase avec les objets réactifs de l'état local
+      if (states && generator.purchase(states, gameState.generators)) {
+        // La modification de l'état se fait directement dans purchase
+        // L'interface se mettra à jour grâce à la réactivité de gameState
       }
     };
 
-    const initializeGenerators = () => {
-      // Générateur 1
-      const gen1 = new Generator('Générateur Quantique I', 1, 1, 1.2);
-      generators.value.push(gen1);
-      TickService.addGenerator(gen1);
+    // Cette fonction n'initialise plus directement l'état global, mais crée les instances
+    const initializeGameData = () => {
+       // Initialiser les ressources
+      const potentiel = new Resource('Potentiel', 0);
+      const etats = new Resource('États', 0);
 
-      // Générateur 2
-      const gen2 = new Generator('Générateur Quantique II', 10, 5, 1.3);
-      gen2.setUnlockRequirement({
-        check: (gameState) => gameState.getGeneratorCount(0) >= 10
-      });
-      generators.value.push(gen2);
-      TickService.addGenerator(gen2);
+      // Initialiser les générateurs
+      const initialGenerators = [
+        reactive(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.2 })), // Générateur 1
+        reactive(new Generator(2, { generator: 10, states: 10 }, { generator: 1.1, states: 1.3 })), // Générateur 2
+        reactive(new Generator(3, { generator: 10, states: 50 }, { generator: 1.2, states: 1.4 })), // Générateur 3
+        reactive(new Generator(4, { generator: 10, states: 200 }, { generator: 1.3, states: 1.5 })), // Générateur 4
+      ];
 
-      // Générateur 3
-      const gen3 = new Generator('Générateur Quantique III', 50, 25, 1.4);
-      gen3.setUnlockRequirement({
-        check: (gameState) => gameState.getGeneratorCount(1) >= 10
-      });
-      generators.value.push(gen3);
-      TickService.addGenerator(gen3);
+      // Ajuster le count du premier générateur à 1 pour le démarrage
+      const initialGen1 = initialGenerators.find(gen => gen.rank === 1);
+      if (initialGen1) {
+          initialGen1.count = 1; // Le joueur commence avec 1 générateur de rang 1
+           // Configurer la ressource Potentiel pour utiliser ce count initial
+          potentiel.setGenerators(initialGen1.count);
+      }
 
-      // Générateur 4
-      const gen4 = new Generator('Générateur Quantique IV', 200, 100, 1.5);
-      gen4.setUnlockRequirement({
-        check: (gameState) => gameState.getGeneratorCount(2) >= 10
-      });
-      generators.value.push(gen4);
-      TickService.addGenerator(gen4);
+       return { resources: new Map([[potentiel.name, potentiel], [etats.name, etats]]), generators: initialGenerators };
     };
 
+
     onMounted(() => {
-      // Initialiser le Potentiel avec 1 générateur de départ
-      const potentiel = new Resource('Potentiel', 0);
-      potentiel.setGenerators(1);
+      // Initialiser les données du jeu (ressources et générateurs)
+      const initialData = initializeGameData();
       
-      // Initialiser les États
-      const etats = new Resource('États', 0);
-      
-      TickService.addResource(potentiel);
-      TickService.addResource(etats);
-      
-      initializeGenerators();
-      updateResources();
-      
+      // Peupler l'état local réactif et le TickService avec les données initiales
+      gameState.resources = reactive(initialData.resources); // Rendre la map de ressources réactive dans l'état local
+      gameState.generators = reactive(initialData.generators); // Rendre le tableau de générateurs réactif dans l'état local
+
+      // Passer les collections réactives au TickService pour qu'il puisse les manipuler
+      TickService.setGameStateCollections(gameState.resources, gameState.generators);
+
       // Démarrer le système de ticks
       TickService.start();
       
-      // Mettre à jour l'affichage toutes les 100ms
-      updateInterval = setInterval(updateResources, 100);
+      // On aura peut-être besoin d'une manière pour le TickService de notifier les changements
+      // ou l'interface se mettra à jour si les objets réactifs sont modifiés directement par le service.
+
     });
 
     onUnmounted(() => {
       TickService.stop();
-      if (updateInterval) {
-        clearInterval(updateInterval);
-      }
     });
 
+    // Retourner l'état local réactif pour l'affichage
     return {
-      resourcesData,
-      generators,
+      gameState,
       isDebugEnabled,
       formatNumber,
       toggleDebug,
       buyGenerator,
-      TickService
+      TickService // Exposer le service si nécessaire
     };
   }
 }
@@ -277,6 +274,11 @@ h3 {
 }
 
 .resource-generators {
+  color: #ff9d00;
+  font-size: 0.9em;
+}
+
+.resource-next-milestone {
   color: #ff9d00;
   font-size: 0.9em;
 }

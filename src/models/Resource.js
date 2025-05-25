@@ -61,6 +61,11 @@ export default class Resource {
     return this.generators;
   }
 
+  // Obtient le taux de production par tick
+  getProductionRate() {
+      return this.generators * this.baseProduction;
+  }
+
   setValue(value) {
     this.value = value;
   }

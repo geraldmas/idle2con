@@ -1,10 +1,16 @@
+import { reactive } from 'vue';
+
 export default class GameState {
   constructor() {
-    this.generators = [];
+    this.generators = reactive([]);
   }
 
   addGenerator(generator) {
-    this.generators.push(generator);
+    this.generators.push(reactive(generator));
+  }
+
+  getGenerator(rank) {
+    return this.generators.find(gen => gen.rank === rank);
   }
 
   getGeneratorCount(index) {

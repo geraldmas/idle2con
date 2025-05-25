@@ -12,7 +12,10 @@
       </div>
       <div class="cost">
         <span class="label">Coût:</span>
-        <span class="value">{{ formatNumber(cost) }} {{ costResource }}</span>
+        <span class="value">
+          {{ formatNumber(cost) }} États
+          <span v-if="generatorCost > 0">+ {{ formatNumber(generatorCost) }} {{ name === 'Générateur Quantique II' ? 'Gén. I' : name === 'Générateur Quantique III' ? 'Gén. II' : 'Gén. III' }}</span>
+        </span>
       </div>
     </div>
 
@@ -21,7 +24,9 @@
       :disabled="!canAfford || !isUnlocked"
       @click="buyGenerator"
     >
-      {{ isUnlocked ? 'Acheter' : 'Débloqué à ' + unlockRequirement }}
+      <span v-if="!isUnlocked">Débloqué à {{ unlockRequirement }}</span>
+      <span v-else-if="!canAfford">Coût: {{ formatNumber(cost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ name === 'Générateur Quantique II' ? 'Gén. I' : name === 'Générateur Quantique III' ? 'Gén. II' : 'Gén. III' }}</span></span>
+      <span v-else>Acheter</span>
     </button>
   </div>
 </template>
@@ -45,12 +50,16 @@ export default {
       required: true
     },
     cost: {
-      type: Number,
+      type: Number, // Coût en états
       required: true
+    },
+     generatorCost: {
+      type: Number, // Coût en générateurs précédents
+      default: 0
     },
     costResource: {
       type: String,
-      default: 'États'
+      default: 'États' // Cette prop ne sera plus utilisée pour l'affichage multiple
     },
     isUnlocked: {
       type: Boolean,
@@ -66,7 +75,10 @@ export default {
     }
   },
   setup(props, { emit }) {
+    console.log(`Generator ${props.name} received canAfford: ${props.canAfford}`);
+
     const formatNumber = (num) => {
+      if (num === undefined || num === null) return '0';
       if (num >= 1000000) {
         return (num / 1000000).toFixed(2) + 'M';
       }
@@ -143,6 +155,11 @@ export default {
 .value {
   color: #e6e6e6;
   font-family: 'Roboto Mono', monospace;
+  filter: none;
+}
+
+.cost .value {
+  color: #e6e6e6;
 }
 
 .buy-button {
@@ -163,9 +180,13 @@ export default {
 }
 
 .buy-button:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
   border-color: #3a3a5a;
-  color: #3a3a5a;
+  background-color: #2a2a4a;
+}
+
+.buy-button:disabled span {
+  color: #e6e6e6;
 }
 </style> 
