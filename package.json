@@ -5,9 +5,9 @@
   "description": "Un jeu idle sur le thème de la physique quantique",
   "main": "src/index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "vite --mode production",
+    "build": "vite build --mode production",
+    "preview": "vite preview --mode production",
     "test": "jest",
     "lint": "eslint src/**/*.js"
   },
@@ -22,6 +22,7 @@
     "eslint": "^8.55.0",
     "jest": "^29.5.0",
     "jest-environment-jsdom": "^29.7.0",
+    "terser": "^5.39.2",
     "vite": "^4.4.5"
   }
 }

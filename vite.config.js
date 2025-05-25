@@ -5,6 +5,15 @@ import path from 'path';
 export default defineConfig({
   plugins: [vue()],
   base: './',
+  mode: 'production',
+  server: {
+    fs: {
+      strict: true
+    },
+    headers: {
+      'Content-Type': 'application/javascript'
+    }
+  },
   build: {
     outDir: 'docs',
     assetsDir: 'assets',
