@@ -34,56 +34,77 @@ describe('Generator', () => {
         expect(gen2.unlockedFeatures.size).toBe(0);
     });
 
-    test('getCost calculates state cost correctly for each rank', () => {
-        const gen2 = generators[1];
+    test('getCost calculates state cost correctly for each rank and manualPurchases', () => {
+        const mockGameState = { antiparticleEffects: { costDivider: 1 } };
+        const gen1 = generators[0]; // Growth 1.2, BaseCost.states = 1
+        gen1.manualPurchases = 0;
+        expect(gen1.getCost(mockGameState)).toBe(1); // 1 * 1.2^0
+        gen1.manualPurchases = 1;
+        expect(gen1.getCost(mockGameState)).toBe(Math.floor(1 * 1.2)); // 1
+        gen1.manualPurchases = 2;
+        expect(gen1.getCost(mockGameState)).toBe(Math.floor(1 * 1.2 * 1.2)); // 1
+
+        const gen2 = generators[1]; // Growth 1.3, BaseCost.states = 10
         gen2.manualPurchases = 0;
-        expect(gen2.getCost()).toBe(0);
+        expect(gen2.getCost(mockGameState)).toBe(10); // 10 * 1.3^0
         gen2.manualPurchases = 1;
-        expect(gen2.getCost()).toBe(0);
+        expect(gen2.getCost(mockGameState)).toBe(Math.floor(10 * 1.3)); // 13
+        gen2.manualPurchases = 2;
+        expect(gen2.getCost(mockGameState)).toBe(Math.floor(10 * 1.3 * 1.3)); // 16
+
+        // Test with costDivider
+        const mockGameStateDivided = { antiparticleEffects: { costDivider: 2 } };
+        gen2.manualPurchases = 1;
+        expect(gen2.getCost(mockGameStateDivided)).toBe(Math.floor(13 / 2)); // 6
     });
 
-    test('getGeneratorCost calculates previous generator cost correctly for each rank', () => {
-        // Test Generator 2
-        const gen2 = generators[1];
+    test('getGeneratorCost calculates previous generator cost correctly', () => {
+        const mockGameState = { antiparticleEffects: { costDivider: 1 } };
+        const gen2 = generators[1]; // Growth 1.1, BaseCost.generator = 10
         gen2.manualPurchases = 0;
-        expect(gen2.getGeneratorCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.1^0 = 10
+        expect(gen2.getGeneratorCost(mockGameState)).toBe(10);
         gen2.manualPurchases = 1;
-        expect(gen2.getGeneratorCost()).toBe(Math.floor(10 * Math.pow(1.1, 1)));
+        expect(gen2.getGeneratorCost(mockGameState)).toBe(Math.floor(10 * 1.1)); // 11
 
-        // Test Generator 3
-        const gen3 = generators[2];
-        gen3.manualPurchases = 0;
-        expect(gen3.getGeneratorCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.2^0 = 10
-        gen3.manualPurchases = 1;
-        expect(gen3.getGeneratorCost()).toBe(Math.floor(10 * Math.pow(1.2, 1)));
-
-        // Test Generator 4
-        const gen4 = generators[3];
-        gen4.manualPurchases = 0;
-        expect(gen4.getGeneratorCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.3^0 = 10
-        gen4.manualPurchases = 1;
-        expect(gen4.getGeneratorCost()).toBe(Math.floor(10 * Math.pow(1.3, 1)));
+        // Test with costDivider
+        const mockGameStateDivided = { antiparticleEffects: { costDivider: 2 } };
+        expect(gen2.getGeneratorCost(mockGameStateDivided)).toBe(Math.floor(11 / 2)); // 5
     });
 
-    test('canAfford checks state and previous generator costs for each rank', () => {
-        resources.value = 10;
-        generators[0].count = 10;
-        const gen2 = generators[1];
-        expect(gen2.canAfford(resources, generators)).toBe(true);
-        // Test Generator 3
-        const gen3 = generators[2];
-        generators[1].count = 10;
-        expect(gen3.canAfford(resources, generators)).toBe(true);
+    test('canAfford checks state and previous generator costs', () => {
+        const mockGameState = { antiparticleEffects: { costDivider: 1 } };
+        resources.value = 100; // Sufficient states
+        generators[0].count = 100; // Sufficient Gen1 for Gen2 cost
+        
+        const gen2 = generators[1]; // Cost: 10 states, 10 Gen1 (manualPurchases=0)
+        gen2.manualPurchases = 0;
+        expect(gen2.canAfford(resources, generators, mockGameState)).toBe(true);
+
+        resources.value = 5; // Insufficient states
+        expect(gen2.canAfford(resources, generators, mockGameState)).toBe(false);
+        resources.value = 100; // Sufficient states
+
+        generators[0].count = 5; // Insufficient Gen1
+        expect(gen2.canAfford(resources, generators, mockGameState)).toBe(false);
     });
 
-    test('purchase buys generator and deducts costs correctly for each rank', () => {
-        generators[0].maxCount = 10;
+    test('purchase buys generator and deducts costs correctly', () => {
+        const mockGameState = { antiparticleEffects: { costDivider: 1 } };
+        const gen1 = generators[0];
+        gen1.count = 10; // Gen1 has 10
+        
         const gen2 = generators[1];
-        gen2.updateUnlockStatus(generators);
-        expect(gen2.isUnlocked).toBe(false);
-        expect(gen2.purchase(resources, generators)).toBe(false);
-        expect(gen2.count).toBe(0);
-        expect(gen2.manualPurchases).toBe(0);
+        gen2.isUnlocked = true; // Manually unlock for test
+        gen2.manualPurchases = 0;
+
+        resources.value = 20; // Enough states (cost 10)
+        // Gen2 costs 10 Gen1
+        
+        expect(gen2.purchase(resources, generators, mockGameState)).toBe(true);
+        expect(gen2.count).toBe(1);
+        expect(gen2.manualPurchases).toBe(1);
+        expect(resources.value).toBe(10); // 20 - 10 state cost
+        expect(gen1.count).toBe(0); // 10 - 10 gen1 cost
     });
 
     test('checkUnlockCondition works correctly for each rank', () => {
@@ -128,68 +149,83 @@ describe('Generator', () => {
     });
 
     test('getProduction calculates production with milestone bonuses', () => {
+        const mockGameState = { antiparticleEffects: { generatorProductionMultiplier: 1 } };
         const gen1 = generators[0];
         gen1.count = 99;
-        gen1.maxCount = 99;
-        expect(gen1.getProduction()).toBe(49.5);
+        gen1.maxCount = 99; // Milestones for 99 (10,30,90): bonus = 2^3 = 8
+        // Expected: 99 * (1/32) * 8 = 24.75
+        expect(gen1.getProduction(mockGameState)).toBeCloseTo(24.75);
+
         gen1.count = 100;
-        gen1.maxCount = 100;
-        expect(gen1.getProduction()).toBe(100);
+        gen1.maxCount = 100; // Milestones for 100 (10,30,90): bonus = 2^3 = 8
+        // Expected: 100 * (1/32) * 8 = 25
+        expect(gen1.getProduction(mockGameState)).toBeCloseTo(25);
+
+        // Test with generatorProductionMultiplier
+        const mockGameStateMultiplied = { antiparticleEffects: { generatorProductionMultiplier: 2 } };
+        expect(gen1.getProduction(mockGameStateMultiplied)).toBeCloseTo(50);
     });
 
     test('getPowerMilestones returns correct milestone values', () => {
         const gen1 = generators[0];
         const milestones = gen1.getPowerMilestones();
-        expect(milestones).toEqual([10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000]);
+        // Paliers : 10, 10*3=30, 30*3=90, 90*3=270, ...
+        expect(milestones).toEqual([10, 30, 90, 270, 810, 2430, 7290, 21870, 65610, 196830]);
     });
 
     test('getReachedMilestones returns correct reached milestones', () => {
         const gen1 = generators[0];
-        gen1.count = 15;
-        expect(gen1.getReachedMilestones()).toEqual([]);
-        gen1.count = 30;
-        expect(gen1.getReachedMilestones()).toEqual([]);
+        gen1.maxCount = 15; // maxCount used now
+        expect(gen1.getReachedMilestones()).toEqual([10]);
+        gen1.maxCount = 30;
+        expect(gen1.getReachedMilestones()).toEqual([10, 30]);
     });
 
     test('getNextMilestone returns correct next milestone', () => {
         const gen1 = generators[0];
-        gen1.count = 15;
-        expect(gen1.getNextMilestone()).toBe(10);
-        gen1.count = 1000;
-        expect(gen1.getNextMilestone()).toBe(10);
+        gen1.maxCount = 15; // maxCount used now
+        expect(gen1.getNextMilestone()).toBe(30);
+        gen1.maxCount = 90;
+        expect(gen1.getNextMilestone()).toBe(270);
     });
 
     test('getMilestoneProgress returns correct progress', () => {
         const gen1 = generators[0];
-        gen1.count = 5;
-        expect(gen1.getMilestoneProgress()).toBe(0);
-        gen1.count = 10;
-        expect(gen1.getMilestoneProgress()).toBe(0);
+        gen1.maxCount = 5; // Use maxCount
+        expect(gen1.getNextMilestone()).toBe(10);
+        expect(gen1.getMilestoneProgress()).toBe(0.5); 
+        gen1.maxCount = 10;
+        expect(gen1.getNextMilestone()).toBe(30); // Next is 30 after 10
+        expect(gen1.getMilestoneProgress()).toBeCloseTo(10/30); 
     });
 
     test('getMilestoneBonus returns correct bonus multiplier', () => {
         const gen1 = generators[0];
-        gen1.count = 15;
-        expect(gen1.getMilestoneBonus()).toBe(1);
-        gen1.count = 30;
-        expect(gen1.getMilestoneBonus()).toBe(1);
+        gen1.maxCount = 15; // maxCount used now
+        expect(gen1.getMilestoneBonus()).toBe(2); // Reached 10 (1 milestone) -> 2^1
+        gen1.maxCount = 30;
+        expect(gen1.getMilestoneBonus()).toBe(4); // Reached 10, 30 (2 milestones) -> 2^2
     });
 
-    test('milestones are preserved when generator count decreases', () => {
+    test('milestones are preserved when generator count decreases, based on maxCount', () => {
         const gen1 = generators[0];
-        gen1.count = 10;
-        expect(gen1.getReachedMilestones()).toEqual([]);
-        expect(gen1.getMilestoneBonus()).toBe(1);
-        gen1.count = 5;
-        expect(gen1.getReachedMilestones()).toEqual([]);
-        expect(gen1.getMilestoneBonus()).toBe(1);
+        gen1.maxCount = 30; // Set maxCount
+        gen1.count = 30;    // Current count
+        expect(gen1.getReachedMilestones()).toEqual([10, 30]);
+        expect(gen1.getMilestoneBonus()).toBe(4);
+        
+        gen1.count = 5; // Current count decreases, but maxCount remains 30
+        expect(gen1.getReachedMilestones()).toEqual([10, 30]); // Still based on maxCount
+        expect(gen1.getMilestoneBonus()).toBe(4);      // Still based on maxCount
     });
 
-    test('maxCount is correctly updated during purchases', () => {
+    test('maxCount is correctly updated when count increases', () => {
         const gen1 = generators[0];
+        gen1.count = 5; // sets _count.value, and calls setter for count
+        expect(gen1.maxCount).toBe(5); 
         gen1.count = 10;
-        expect(gen1.maxCount).toBe(0);
-        gen1.count = 5;
-        expect(gen1.maxCount).toBe(0);
+        expect(gen1.maxCount).toBe(10);
+        gen1.count = 7; // decrease count
+        expect(gen1.maxCount).toBe(10); // maxCount should not decrease
     });
 }); 

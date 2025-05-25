@@ -3,14 +3,14 @@ import { Particle } from '../Particle';
 // Effets spécifiques pour chaque type de particule
 const effects = {
     electron: {
-        value: 0.03,
-        description: "Augmente dt de 3%",
-        dtMultiplier: 0.03,
+        value: 0.05,
+        description: "Augmente dt de 5%",
+        dtMultiplier: 0.05,
         generatorBonus: 0,
         costReduction: 0,
         apply: (gameState) => ({
             ...gameState,
-            dt: gameState.dt * (1 + 0.03)
+            dt: gameState.dt * (1 + 0.05)
         })
     },
     neutrinoE: {

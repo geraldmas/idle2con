@@ -9,7 +9,7 @@ export class ObservationService {
     constructor() {
         this.storage = new ParticleStorage();
         this.baseCost = 10; // Coût de base pour les particules normales en générateurs
-        this.costGrowthRate = Math.pow(2, 1/20); // Taux de croissance du coût des particules normales
+        this.costGrowthRate = 1.1; // Taux de croissance du coût des particules normales
         this.observationCount = 0; // Compteur d'observations de particules normales
 
         // Coût et compteur pour les antiparticules

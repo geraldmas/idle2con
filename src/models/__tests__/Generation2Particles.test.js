@@ -5,7 +5,7 @@ describe('Generation 2 Particles', () => {
         const muon = new Muon();
         const gameState = { dt: 1 };
         const newState = muon.applyEffect(gameState);
-        expect(newState.dt).toBe(1.05);
+        expect(newState.dt).toBe(1.20);
     });
 
     test('NeutrinoMu should have correct effect', () => {

@@ -322,57 +322,6 @@ export default {
       saveService.saveGame(gameState);
     };
 
-    const updateGameState = () => {
-      // Mettre à jour les ressources
-      gameState.resources.forEach(resource => {
-        // Ne pas mettre à jour le Potentiel ici car il sera mis à jour plus tard
-        if (resource.name !== 'Potentiel' && typeof resource.update === 'function') {
-          resource.update(TickService.getDt(), gameState.antiparticleEffects);
-        }
-      });
-
-      // Mettre à jour les générateurs
-      gameState.generators.forEach(generator => {
-        if (typeof generator.updateUnlockStatus === 'function') {
-          generator.updateUnlockStatus(gameState.generators);
-        }
-      });
-
-      // Mettre à jour le Potentiel
-      const potentielResource = gameState.resources.get('Potentiel');
-      const gen1 = gameState.generators.find(gen => gen.rank === 1);
-      if (potentielResource && gen1) {
-        // Mettre à jour le nombre de générateurs dans la ressource Potentiel
-        potentielResource.setGenerators(gen1.count);
-        
-        // Calculer la production de potentiel
-        const baseProduction = 1/32; // Production de base par générateur
-        const milestoneBonus = gen1.getMilestoneBonus();
-        const antiparticleMultiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
-        
-        // Calculer la production totale
-        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * TickService.getDt()).toFixed(10));
-        
-        // Mettre à jour la valeur du potentiel
-        potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
-
-        if (isDebugEnabled.value) {
-          console.log('Production Potentiel:', {
-            count: gen1.count,
-            baseProduction,
-            milestoneBonus,
-            antiparticleMultiplier,
-            dt: TickService.getDt(),
-            production: potentielProduction,
-            total: potentielResource.value
-          });
-        }
-      }
-
-      // Calculer et stocker les effets des antiparticules
-      gameState.antiparticleEffects = prestigeService.calculateAntiparticleEffects(gameState);
-    };
-
     onMounted(() => {
       // Initialiser les données du jeu (ressources et générateurs)
       const initialData = initializeGameData();
@@ -391,6 +340,9 @@ export default {
       // Initialiser les particules
       const particleInitializer = new ParticleInitializer();
       particleInitializer.initialize();
+
+      // Calculer les effets initiaux des antiparticules
+      gameState.antiparticleEffects = PrestigeService.calculateAntiparticleEffects(gameState);
 
       // Le PrestigeService est maintenant géré ici et n'a pas besoin d'être passé explicitement
       // Ses méthodes recevront gameState en argument si nécessaire.

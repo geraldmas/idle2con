@@ -3,14 +3,14 @@ import { Particle } from '../Particle';
 // Effets spécifiques pour chaque type de particule
 const effects = {
     muon: {
-        value: 0.05,
-        description: "Augmente dt de 5%",
-        dtMultiplier: 0.05,
+        value: 0.20,
+        description: "Augmente dt de 20%",
+        dtMultiplier: 0.20,
         generatorBonus: 0,
         costReduction: 0,
         apply: (gameState) => ({
             ...gameState,
-            dt: gameState.dt * (1 + 0.05)
+            dt: gameState.dt * (1 + 0.20)
         })
     },
     neutrinoMu: {

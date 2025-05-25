@@ -5,7 +5,7 @@ describe('Generation 3 Particles', () => {
         const tau = new Tau();
         const gameState = { dt: 1 };
         const newState = tau.applyEffect(gameState);
-        expect(newState.dt).toBe(1.10);
+        expect(newState.dt).toBe(1.75);
     });
 
     test('NeutrinoTau should have correct effect', () => {

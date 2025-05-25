@@ -1,5 +1,4 @@
 import { ParticleStorage } from './ParticleStorage';
-import GameState from '../models/GameState';
 
 export class PrestigeService {
     constructor() {
@@ -10,7 +9,6 @@ export class PrestigeService {
         this.prestigeThreshold = 1000; // Seuil de prestige modulable
         this.antipotentialBaseCost = 3; // Coût de base pour observer une antiparticule
         this.antipotentialGrowthRate = 1.1; // Taux de croissance du coût
-        this.gameState = new GameState();
     }
 
     canPrestige(gameState) {
@@ -86,8 +84,8 @@ export class PrestigeService {
             }
         }
 
-        // Perdre TOUTES les particules au prestige
-        gameState.particles = [];
+        // Filtrer les particules pour ne garder que celles de génération 4
+        gameState.particles = gameState.particles.filter(particle => particle.generation === 4);
 
         // Ajouter les points d'antipotentiel
         gameState.antipotential = (gameState.antipotential || 0) + antipotentialGain;
@@ -111,7 +109,7 @@ export class PrestigeService {
     }
 
     // Méthode pour calculer les effets des antiparticules
-    calculateAntiparticleEffects(gameState) {
+    static calculateAntiparticleEffects(gameState) {
         if (!gameState || !Array.isArray(gameState.antiparticles)) {
             return {
                 dtExponent: 1,
@@ -174,7 +172,13 @@ export class PrestigeService {
 
         // Calculer la base du seuil d'état pour les antineutrinos
         // Nouvelle base : 2^(1/(10+M+4*N+13*P))
-        const stateThresholdBase = 2 / (10 + (antineutrinoECount * 1) + (antineutrinoMuCount * 4) + (antineutrinoTauCount * 13));
+        let stateThresholdDenominator = (10 + (antineutrinoECount * 1) + (antineutrinoMuCount * 4) + (antineutrinoTauCount * 13));
+        // Ensure the denominator is positive; if not, default to a safe value (e.g., 10, as per original non-bonus value).
+        // Given the formula starts with 10, it should always be positive unless counts are negative (which they shouldn't be).
+        if (stateThresholdDenominator <= 0) {
+            stateThresholdDenominator = 10; // Fallback to default if calculation is problematic
+        }
+        const stateThresholdBase = stateThresholdDenominator;
 
         // Appliquer l'effet de l'exposant dt (s'assurer qu'il est >= 1)
         const finalDtExponent = Math.max(1, 1 + totalDtExponentBonus); // Exponentiel = 1 (base) + bonus additif

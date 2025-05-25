@@ -59,9 +59,10 @@ export default class Generator {
                           this.rank === 3 ? 50 :
                           this.rank === 4 ? 200 : 0; // Coûts de base pour G2, G3, G4
 
-    const growthRate = this.rank === 1 ? 1.05 : 
-                      this.rank === 2 ? 1.1 :
-                      this.rank === 3 ? 1.15 : 1.2; // Taux de croissance en états
+    const growthRate = this.rank === 1 ? 1.2 :
+                      this.rank === 2 ? 1.3 :
+                      this.rank === 3 ? 1.4 :
+                      this.rank === 4 ? 1.5 : 1; // Default to 1 if rank is somehow out of expected range
 
     // Utiliser manualPurchases pour la croissance exponentielle du coût
     const calculatedCost = baseStateCost * Math.pow(growthRate, this.manualPurchases);
@@ -209,7 +210,7 @@ export default class Generator {
     // Si elle est censée être utilisée pour l'affichage de la production de BASE dans l'UI,
     // elle devrait peut-être inclure le multiplicateur global si celui-ci est considéré comme BASE.
     // En l'état, elle renvoie la production de base par unité, sans bonus.
-    return 1/16; // Production de base par générateur par tick
+    return 1/32; // Production de base par générateur par tick
   }
 
   checkUnlockCondition(generators) {

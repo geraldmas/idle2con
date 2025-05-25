@@ -1,5 +1,5 @@
-import GameState from '../models/GameState';
 import { reactive } from 'vue';
+import { PrestigeService } from './PrestigeService';
 
 class TickService {
   constructor() {
@@ -85,12 +85,33 @@ class TickService {
       // Appliquer les effets des antiparticules avant de mettre à jour les ressources et générateurs
       const antiparticleEffects = this.gameState.antiparticleEffects || {};
 
+      // Calculate dt multiplier from regular particles
+      let totalParticleDtMultiplier = 1;
+      if (this.gameState && this.gameState.particles && Array.isArray(this.gameState.particles)) {
+          totalParticleDtMultiplier = this.gameState.particles.reduce((total, particle) => {
+              if (particle && typeof particle.getDtMultiplier === 'function') {
+                  return total * (1 + particle.getDtMultiplier());
+              }
+              return total;
+          }, 1);
+      }
+
+      // Get antiparticle dt exponent effect
+      // antiparticleEffects should already be calculated at the beginning of the tick() method
+      const antiparticleDtExponent = (this.gameState.antiparticleEffects?.dtExponent !== undefined) ? this.gameState.antiparticleEffects.dtExponent : 1;
+
+      // Calculate final effective dt: apply particle multipliers first, then antiparticle exponent
+      const baseDtForCalc = this.dt * totalParticleDtMultiplier;
+      const effectiveDt = Math.pow(baseDtForCalc, antiparticleDtExponent);
+
       // Mettre à jour les ressources (Potentiel et États)
       // Accéder aux ressources via gameState
+      // Note: baseDtForCalc is calculated above, includes particle dt multipliers
       this.gameState.resources.forEach(resource => {
         // Ne pas mettre à jour le Potentiel ici car il sera mis à jour plus tard
         if (resource.name !== 'Potentiel' && typeof resource.update === 'function') {
-          resource.update(this.dt, antiparticleEffects);
+          // Pass baseDtForCalc so Resource.js can apply antiparticle exponent to it
+          resource.update(baseDtForCalc, antiparticleEffects);
         }
       });
 
@@ -111,30 +132,6 @@ class TickService {
       const gen3 = this.gameState.generators.find(gen => gen.rank === 3);
       const gen4 = this.gameState.generators.find(gen => gen.rank === 4);
 
-      // Production de Générateurs I par les Générateurs II
-      if (gen1 && gen2 && gen2.count > 0) {
-        // Chaque Générateur II produit 0.1 Générateur I par seconde
-        const gen1Production = Number((gen2.count * 0.1 * this.dt).toFixed(10));
-        const newGen1Count = Number((gen1.count + gen1Production).toFixed(10));
-        
-        // Mettre à jour le nombre de générateurs
-        gen1.count = newGen1Count;
-      }
-
-      // Production de Générateurs II par les Générateurs III
-      if (gen2 && gen3 && gen3.count > 0) {
-        // Chaque Générateur III produit 0.1 Générateur II par seconde
-        const gen2Production = Number((gen3.count * 0.1 * this.dt).toFixed(10));
-        gen2.count = Number((gen2.count + gen2Production).toFixed(10));
-      }
-
-      // Production de Générateurs III par les Générateurs IV
-      if (gen3 && gen4 && gen4.count > 0) {
-        // Chaque Générateur IV produit 0.1 Générateur III par seconde
-        const gen3Production = Number((gen4.count * 0.1 * this.dt).toFixed(10));
-        gen3.count = Number((gen3.count + gen3Production).toFixed(10));
-      }
-
       // Mettre à jour le Potentiel après avoir mis à jour tous les générateurs
       const potentielResource = this.gameState.resources.get('Potentiel');
       if (potentielResource && gen1) {
@@ -147,7 +144,7 @@ class TickService {
         const antiparticleMultiplier = antiparticleEffects?.generatorProductionMultiplier || 1;
         
         // Calculer la production totale
-        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * this.dt).toFixed(10));
+        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * effectiveDt).toFixed(10));
         
         // Mettre à jour la valeur du potentiel
         potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
