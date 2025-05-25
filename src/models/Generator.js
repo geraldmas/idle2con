@@ -30,6 +30,11 @@ export default class Generator {
   }
 
   canAfford(resources, generators) {
+    // Logs de débogage pour canAfford - Supprimés
+    // if (this.rank === 2) {
+    //     ...
+    // }
+
     if (this.rank > 1 && (!generators || generators.length === 0)) {
       return false;
     }
@@ -42,7 +47,7 @@ export default class Generator {
     }
     
     if (this.rank > 1) {
-      const previousGenerator = generators[this.rank - 1];
+      const previousGenerator = generators[this.rank - 2];
       const generatorCost = this.getGeneratorCost();
 
       if (!previousGenerator || previousGenerator.count < generatorCost) {
@@ -63,7 +68,27 @@ export default class Generator {
 
     // Déduire le coût en générateurs précédents si applicable
     if (this.rank > 1) {
-      generators[this.rank - 1].count -= this.getGeneratorCost();
+      // Utiliser l'index correct pour le générateur précédent
+      const previousGeneratorIndex = this.rank - 2;
+      if (previousGeneratorIndex >= 0 && previousGeneratorIndex < generators.length) {
+          const previousGenerator = generators[previousGeneratorIndex];
+          const costToDeduct = this.getGeneratorCost();
+          
+          // Logs détaillés avant déduction
+          console.log(`Purchase (Gen ${this.rank}): État avant déduction:`);
+          console.log(`- Générateur ${previousGenerator.rank}: count=${previousGenerator.count}, coût à déduire=${costToDeduct}`);
+          console.log(`- Générateur ${this.rank}: count=${this.count}`);
+          
+          // Modifier le compteur du générateur précédent
+          previousGenerator.count -= costToDeduct;
+
+          // Logs détaillés après déduction
+          console.log(`Purchase (Gen ${this.rank}): État après déduction:`);
+          console.log(`- Générateur ${previousGenerator.rank}: count=${previousGenerator.count}`);
+          console.log(`- Générateur ${this.rank}: count=${this.count}`);
+      } else {
+          return false; // Annuler l'achat si l'index est invalide
+      }
     }
     
     this.count++;
@@ -98,7 +123,18 @@ export default class Generator {
   checkUnlockCondition(generators) {
     if (this.rank === 1) return true;
     
-    const previousGenerator = generators[this.rank - 1];
+    // Pour un générateur de rang N, le générateur précédent est de rang N-1.
+    // Si les générateurs sont dans un tableau indexé de 0 à N-1,
+    // le générateur de rang N est à l'index N-1.
+    // Le générateur précédent (rang N-1) est donc à l'index (N-1) - 1 = N - 2.
+    const previousGeneratorIndex = this.rank - 2;
+
+    // S'assurer que l'index est valide
+    if (previousGeneratorIndex < 0 || previousGeneratorIndex >= generators.length) {
+        return false; // Index invalide, pas de générateur précédent
+    }
+
+    const previousGenerator = generators[previousGeneratorIndex];
     return previousGenerator && previousGenerator.count >= 10;
   }
 

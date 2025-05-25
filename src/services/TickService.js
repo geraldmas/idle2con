@@ -70,20 +70,30 @@ class TickService {
   }
 
   tick() {
-    if (!this.isRunning || !this.gameStateResources || !this.gameStateGenerators) return; // S'assurer que les collections sont définies
+    if (!this.isRunning || !this.gameStateResources || !this.gameStateGenerators) return;
+
+    // Logs de débogage : afficher les compteurs de tous les générateurs à chaque tick
+    if (this.debug) {
+        let generatorCounts = 'Compteurs Générateurs: ';
+        this.gameStateGenerators.forEach(gen => {
+            generatorCounts += `${gen.name}: ${gen.count} | `;
+        });
+        console.log(generatorCounts);
+    }
 
     // Mettre à jour le Potentiel
     const potentiel = this.getResource('Potentiel');
     if (potentiel) {
       // La production de potentiel vient uniquement des générateurs de rang 1
-      // Utiliser le tableau de générateurs passé par App.vue
       const gen1 = this.gameStateGenerators.find(gen => gen.rank === 1);
-      // S'assurer que gen1 est défini et a une méthode getProduction
-      const production = (gen1 && typeof gen1.getProduction === 'function') ? gen1.getProduction() : 0;
-      
-      // Utiliser le dt fixe ici
-      const currentValue = potentiel.getValue();
-      potentiel.setValue(currentValue + production * this.dt);
+      if (gen1) {
+        // Mettre à jour le N (nombre de générateurs) dans la ressource Potentiel
+        potentiel.setGenerators(gen1.count);
+        const production = gen1.getProduction();
+        
+        const currentValue = potentiel.getValue();
+        potentiel.setValue(currentValue + production * this.dt);
+      }
 
       // Vérifier les paliers de puissance pour les États
       const etats = this.getResource('États');
@@ -91,58 +101,42 @@ class TickService {
 
       if (etats && potentiel) {
         const currentEtatsValue = etats.getValue();
+        let nextStateThreshold = Math.pow(2, etats.totalEarned / 10);
 
-        // Utiliser totalEarned pour calculer le seuil du prochain état
-        const nextStateThreshold = Math.pow(1.2, etats.totalEarned + 1);
+        while (potentielValue >= nextStateThreshold) {
+          etats.value += 1;
+          etats.totalEarned += 1;
+          nextStateThreshold = Math.pow(2, etats.totalEarned / 10);
+        }
 
-         // Tant que le potentiel accumulé est supérieur ou égal au seuil du prochain état à gagner
-         while (potentielValue >= nextStateThreshold) {
-           // Gagner un état : incrémenter le nombre possédé ET le total gagné
-           etats.value += 1;
-           etats.totalEarned += 1;
+        etats.updateNextStateMilestone(potentielValue);
+      }
+    }
 
-           // Recalculer le seuil pour le prochain état à gagner basé sur le nouveau totalEarned
-           nextStateThreshold = Math.pow(1.2, etats.totalEarned + 1);
-
-           // Mettre à jour le prochain palier d'état pour l'affichage dans la ressource États
-           // Cette méthode sera appelée après la boucle pour s'assurer que l'affichage est correct.
-           // etats.updateNextStateMilestone(potentielValue); // Appel déplacé après la boucle
-         }
-
-         // Mettre à jour le prochain palier d'état pour l'affichage, basé sur le potentiel actuel
-         // etats.updateNextStateMilestone(potentielValue);
-         // Note : L'appel à updateNextStateMilestone est déjà fait dans la boucle while.
-         // Assurons-nous qu'elle est appelée au moins une fois même si aucun état n'est gagné dans ce tick.
-         etats.updateNextStateMilestone(potentielValue); // Appel ici pour l'affichage initial ou si aucun état gagné
-
+    // Production de Générateurs I par les Générateurs II
+    const gen1 = this.gameStateGenerators.find(gen => gen.rank === 1);
+    const gen2 = this.gameStateGenerators.find(gen => gen.rank === 2);
+    
+    if (gen1 && gen2 && gen2.count > 0) {
+      // Chaque Générateur II produit 0.1 Générateur I par seconde
+      const gen1Production = gen2.count * 0.1 * this.dt;
+      gen1.count += gen1Production;
+      
+      if (this.debug) {
+        console.log(`Production de Générateurs I: +${gen1Production.toFixed(3)} (${gen2.count} Générateurs II)`);
       }
     }
 
     // Logique pour vérifier et débloquer les générateurs
-    this.gameStateGenerators.forEach(generator => {
-        // Utiliser updateUnlockStatus qui appelle checkUnlockCondition en interne
+    this.gameStateGenerators.forEach((generator, index) => {
         generator.updateUnlockStatus(this.gameStateGenerators);
-        
-        // La logique d'unlock dans TickService n'est plus nécessaire car updateUnlockStatus gère _isUnlocked
-        // et l'interface utilisateur réagit à isUnlocked().
-        // if (!generator.isUnlocked() && generator.unlockRequirement) {
-        //     const requirementMet = generator.unlockRequirement.check({
-        //         getGeneratorCount: (index) => { ... }
-        //     });
-        //    if (requirementMet) {
-        //        generator.unlock();
-        //    }
-        // }
     });
-
 
     if (this.debug) {
       console.log('Tick:', {
         dt: this.dt,
         potentiel: potentiel?.getValue(),
         etats: this.getResource('États')?.getValue(),
-        // Production totale n'est plus une méthode de GameState, il faut la calculer si nécessaire pour le log
-        // production: this.gameState.getTotalProduction()
       });
     }
   }

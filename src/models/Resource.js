@@ -5,7 +5,7 @@ export default class Resource {
     this.potential = 0;
     this.states = new Map();
     this.generators = 0; // Nombre de générateurs de 1er rang
-    this.baseProduction = 1/16; // a = 1/16 selon la spécification
+    this.baseProduction = 1/32; // a = 1/32 selon la spécification (diminué)
     this.nextStateMilestone = this.name === 'États' ? 1 : null; // Prochain palier d'état, initialisé à 1 pour États
     this.totalEarned = this.name === 'États' ? initialValue : 0; // Total gagné pour cette ressource
   }
@@ -83,34 +83,33 @@ export default class Resource {
   // Calcule et met à jour le prochain palier d'état à atteindre pour l'affichage
   // Reçoit la valeur actuelle du potentiel en argument
   updateNextStateMilestone(currentPotential) {
-    // La logique des paliers d'état pour l'affichage est une exponentielle de base 1.2
-    // Le prochain palier affiché est 1.2^(nombre d'États GAGNÉS au total + 1)
+    // La logique des paliers d'état pour l'affichage est basée sur 2^(totalEarned / 10)
     if (this.name !== 'États') return;
 
-    // Calculer le palier basé sur le nombre d'États GAGNÉS au total + 1 avec la base 1.2
-    this.nextStateMilestone = Math.pow(1.2, this.totalEarned + 1);
-
-    // Assurez-vous que le palier minimum est 1 si aucun état n'est possédé initialement.
-    // Cette condition n'est peut-être pas nécessaire si initialValue est 0 pour États
-    // et totalEarned commence à 0.
-    // if (this.totalEarned === 0 && this.nextStateMilestone < 1) {
-    //     this.nextStateMilestone = 1;
-    // }
+    // Calculer le palier basé sur le nombre d'États GAGNÉS au total avec la base 2^(1/10)
+    this.nextStateMilestone = Math.pow(2, this.totalEarned / 10);
 
      // S'assurer que le palier affiché est toujours supérieur au potentiel actuel
-     // pour éviter d'afficher un palier déjà dépassé. Ceci est fait dans TickService avant d'appeler cette méthode.
-     // while (currentPotential >= this.nextStateMilestone && this.nextStateMilestone !== 0) {
-     //     this.nextStateMilestone = Math.pow(1.2, this.totalEarned + 1); // Recalcul basé sur totalEarned
-     //     // Petite mesure pour éviter boucle infinie (voir note TickService)
-     //     const previousMilestone = this.nextStateMilestone;
-     //     this.nextStateMilestone = Math.pow(1.2, this.totalEarned + 1);
-     //     if (this.nextStateMilestone <= previousMilestone) {
-     //         break;
-     //     }
-     // }
-     
-    // Note: La logique de gain réelle des états est dans TickService.
-    // Cette méthode est principalement pour mettre à jour la valeur affichée de nextStateMilestone.
+     // pour éviter d'afficher un palier déjà dépassé.
+     // On ne veut pas que le palier affiché soit inférieur au potentiel actuel.
+     // S'il l'est, on calcule le palier pour le prochain état à gagner (totalEarned + 1)
+     while (currentPotential >= this.nextStateMilestone && this.nextStateMilestone !== 0) {
+          this.nextStateMilestone = Math.pow(2, (this.totalEarned + 1) / 10);
+          // Petite mesure pour éviter boucle infinie si le potentiel est très élevé d'un coup
+          if (this.nextStateMilestone <= currentPotential && this.totalEarned < 1000) { // Ajout d'une limite raisonnable
+              this.totalEarned += 1; // Avancer le totalEarned pour trouver un palier supérieur
+          } else {
+              break; // Le palier calculé est supérieur au potentiel ou on a atteint la limite
+          }
+     }
+
+    // Gérer le cas initial où totalEarned est 0, le premier palier est Math.pow(2, 0/10) = 1.
+    // Mais le premier état est gagné à 1 potentiel, donc le prochain palier affiché devrait être Math.pow(2, 1/10) après avoir gagné le premier état.
+    // Initialement, avant de gagner le premier état (totalEarned = 0), le prochain palier affiché devrait être 1 (pour indiquer qu'il faut 1 potentiel pour le 1er état).
+    if (this.totalEarned === 0) {
+        this.nextStateMilestone = 1;
+    }
+
   }
 
   // Obtient la valeur actuelle

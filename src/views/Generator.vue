@@ -2,7 +2,7 @@
   <div class="generator" :class="{ 'locked': !isUnlocked }">
     <div class="generator-header">
       <h4>{{ name }}</h4>
-      <span class="generator-count">{{ count }}</span>
+      <span class="generator-count">{{ formatNumber(count) }}</span>
     </div>
     
     <div class="generator-info">
@@ -87,7 +87,7 @@ export default {
       if (num >= 1000) {
         return (num / 1000).toFixed(2) + 'K';
       }
-      return num.toFixed(2);
+      return Math.floor(num); // Afficher uniquement la partie entière
     };
 
     const buyGenerator = () => {

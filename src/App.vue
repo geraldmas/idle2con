@@ -17,10 +17,10 @@
           <div v-for="resource in gameState.resources.values()" :key="resource.name" class="resource">
             <span class="resource-name">{{ resource.name }}</span>
             <span class="resource-value">{{ formatNumber(resource.getValue()) }}</span>
-            <span v-if="resource.name === 'Potentiel'" class="resource-potential">
-              ({{ resource.generators }} * 1/16 * dt /s)
+            <span v-if="resource.name === 'Potentiel'" class="resource-details">
+              (N * a * dt /s)
               <br>
-              (dt: {{ formatNumber(TickService.getDt()) }})
+              (N: {{ Math.floor(resource.generators) }}, a: {{ formatNumber(resource.baseProduction, 3) }}, dt: {{ formatNumber(TickService.getDt(), 3) }})
             </span>
             <span v-if="resource.name === 'États' && resource.nextStateMilestone !== null" class="resource-next-milestone">
               Prochain état à {{ formatNumber(resource.nextStateMilestone) }} Potentiel
@@ -92,15 +92,15 @@ export default {
     const isDebugEnabled = ref(false);
     let updateInterval;
 
-    const formatNumber = (num) => {
+    const formatNumber = (num, decimals = 2) => {
       if (num === undefined || num === null) return '0';
       if (num >= 1000000) {
-        return (num / 1000000).toFixed(2) + 'M';
+        return (num / 1000000).toFixed(decimals) + 'M';
       }
       if (num >= 1000) {
-        return (num / 1000).toFixed(2) + 'K';
+        return (num / 1000).toFixed(decimals) + 'K';
       }
-      return num.toFixed(2);
+      return num.toFixed(decimals);
     };
 
     const toggleDebug = () => {
@@ -115,9 +115,14 @@ export default {
       const states = gameState.resources.get('États');
       
       // Appeler la méthode purchase avec les objets réactifs de l'état local
-      if (states && generator.purchase(states, gameState.generators)) {
-        // La modification de l'état se fait directement dans purchase
-        // L'interface se mettra à jour grâce à la réactivité de gameState
+      const purchaseSuccessful = states && generator.purchase(states, gameState.generators);
+      
+      if (purchaseSuccessful) {
+          console.log(`Achat de ${generator.name} réussi.`);
+          // La modification de l'état se fait directement dans purchase
+          // L'interface se mettra à jour grâce à la réactivité de gameState
+      } else {
+          console.log(`Achat de ${generator.name} échoué.`);
       }
     };
 
