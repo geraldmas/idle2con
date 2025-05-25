@@ -454,27 +454,23 @@ function buyGenerator(generatorId) {
         return;
     }
 
-    let numToBuy;
+    let numToBuyRaw;
     if (gameData.currentBuyMultiplier === 'MAX') {
-        numToBuy = calculateMaxBuy(generatorId);
+        numToBuyRaw = calculateMaxBuy(generatorId);
     } else {
-        numToBuy = new Decimal(gameData.currentBuyMultiplier);
+        numToBuyRaw = gameData.currentBuyMultiplier;
     }
 
-    // Defensive check: Ensure numToBuy is a Decimal instance.
-    // This is to guard against unexpected scenarios where it might be a primitive number.
-    if (!(numToBuy instanceof Decimal)) {
-        console.warn(`numToBuy was not a Decimal instance. Type: ${typeof numToBuy}, Value: ${numToBuy}. Converting to Decimal.`);
-        // Attempt to convert it to a Decimal. If it was supposed to be from gameData.currentBuyMultiplier,
-        // this logic path implies gameData.currentBuyMultiplier itself might not have been a 'MAX' string
-        // and new Decimal() above might have failed or returned a primitive (highly unlikely for std Decimal.js).
-        // Or, calculateMaxBuy returned a primitive (also unlikely from its definition).
-        // Fallback to 1 if conversion is dubious.
-        let potentialNum = Number(numToBuy); // Try to get a clean number from it
-        if (isNaN(potentialNum)) {
-            potentialNum = 1; // Safe fallback
+    let numToBuy;
+    if (numToBuyRaw instanceof Decimal) {
+        numToBuy = numToBuyRaw;
+    } else {
+        let numericValue = Number(numToBuyRaw);
+        if (isNaN(numericValue)) {
+            console.warn(`Invalid value for numToBuyRaw: ${numToBuyRaw}. Defaulting to 1.`);
+            numericValue = 1;
         }
-        numToBuy = new Decimal(potentialNum);
+        numToBuy = new Decimal(numericValue);
     }
 
     if (numToBuy.isZero()) {
@@ -737,21 +733,24 @@ function updateUI() {
         if (generator.id === 1) { // Only for Tier 1 generator
             const progressBarFill = document.getElementById(`gen-progress-bar-${generator.id}`);
             if (progressBarFill) {
-                // New logic:
-                let progressPercent = 0;
-                // Ensure generator and its currentCost are valid before calculation
-                if (generator && typeof generator.currentCost === 'number') {
-                    if (generator.currentCost > 0) {
-                        progressPercent = (gameData.baseCurrency / generator.currentCost) * 100;
-                    } else { 
-                        // Cost is 0 or less, implies it's free or an edge case
-                        // If player has non-negative currency, consider it 100% affordable
-                        progressPercent = (gameData.baseCurrency >= 0) ? 100 : 0;
+                let progressPercent;
+                // Ensure generator.currentCost is a Decimal
+                if (generator.currentCost instanceof Decimal) {
+                    if (generator.currentCost.isZero() || generator.currentCost.isNegative()) {
+                        progressPercent = gameData.baseCurrency.isPositive() ? new Decimal(100) : new Decimal(0);
+                    } else {
+                        progressPercent = gameData.baseCurrency.div(generator.currentCost).mul(100);
                     }
+
+                    if (progressPercent.gt(100)) progressPercent = new Decimal(100);
+                    if (progressPercent.lt(0)) progressPercent = new Decimal(0);
+
+                    progressBarFill.style.width = progressPercent.toNumber() + '%';
+                } else {
+                    // Fallback or error logging if currentCost is not a Decimal
+                    console.warn(`Generator ${generator.id} currentCost is not a Decimal. Type: ${typeof generator.currentCost}`);
+                    progressBarFill.style.width = '0%'; // Default to 0%
                 }
-                // Clamp progressPercent between 0 and 100
-                progressPercent = Math.min(Math.max(progressPercent, 0), 100);
-                progressBarFill.style.width = progressPercent + '%';
             }
         }
     });
