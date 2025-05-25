@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'vue': 'vue/dist/vue.esm-bundler.js'
+      'vue': 'vue/dist/vue.esm-bundler.prod.js'
     },
   },
   server: {
@@ -18,6 +18,7 @@ export default defineConfig({
     outDir: 'docs',
     assetsDir: 'assets',
     emptyOutDir: true,
+    minify: 'terser',
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
@@ -29,5 +30,9 @@ export default defineConfig({
         assetFileNames: 'assets/[name].[ext]'
       }
     },
+  },
+  define: {
+    __VUE_OPTIONS_API__: true,
+    __VUE_PROD_DEVTOOLS__: false
   }
 }); 
