@@ -707,7 +707,8 @@ function buyGenerator(generatorId) {
     
     // Handle cases where numToBuy (derived from 'MAX' or specific number) might be infinite
     // This is the corrected line, using numToBuy which is guaranteed to be a Decimal.
-    if (numToBuy.isInfinite()) { 
+    // Changed to use .equals() method for checking against Decimal.Infinity and Decimal.NegativeInfinity
+    if (numToBuy.equals(Decimal.Infinity) || numToBuy.equals(Decimal.NegativeInfinity)) {
         if (gameData.debugFreePurchases) {
             numToBuy = new Decimal(1000); // Cap for debug free purchases if calculated max is infinite
             console.log("Debug Free Purchases ON: Max buy is infinite, capping to 1000.");
