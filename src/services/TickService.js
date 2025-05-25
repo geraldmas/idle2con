@@ -62,10 +62,12 @@ class TickService {
   }
 
   stop() {
-    this.isRunning = false;
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.isRunning) {
+      this.isRunning = false;
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
     }
   }
 
@@ -82,7 +84,7 @@ class TickService {
     }
 
     // Mettre à jour le Potentiel
-    const potentiel = this.getResource('Potentiel');
+    const potentiel = this.gameStateResources.get('Potentiel');
     if (potentiel) {
       // La production de potentiel vient uniquement des générateurs de rang 1
       const gen1 = this.gameStateGenerators.find(gen => gen.rank === 1);
@@ -96,7 +98,7 @@ class TickService {
       }
 
       // Vérifier les paliers de puissance pour les États
-      const etats = this.getResource('États');
+      const etats = this.gameStateResources.get('États');
       const potentielValue = potentiel.getValue();
 
       if (etats && potentiel) {

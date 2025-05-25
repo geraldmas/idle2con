@@ -6,6 +6,9 @@
         <button @click="toggleDebug" class="debug-button">
           {{ isDebugEnabled ? 'Désactiver Debug' : 'Activer Debug' }}
         </button>
+        <button @click="resetGame" class="reset-button">
+          Reset Game
+        </button>
       </div>
     </header>
 
@@ -58,6 +61,7 @@
           <h3>Obtention de Particules</h3>
           <ParticleObservation
             :generators="gameState.generators"
+            :is-debug-mode="isDebugEnabled"
             @particle-observed="handleParticleObserved"
           />
         </div>
@@ -78,6 +82,10 @@
         <!-- Ajoutez ici les composants ou éléments liés aux améliorations et au prestige -->
         <!-- Par exemple: <Upgrades /> ou <Prestige /> -->
       </section>
+
+      <section class="game-section prestige-section">
+        <Prestige />
+      </section>
     </div>
   </div>
 </template>
@@ -86,12 +94,37 @@
 import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import Resource from './models/Resource';
 import Generator from './models/Generator';
+import { Particle } from './models/Particle';
 import TickService from './services/TickService';
 import GeneratorComponent from './views/Generator.vue';
 import ParticleCollection from './components/ParticleCollection.vue';
 import ParticleObservation from './components/ParticleObservation.vue';
 import { ParticleInitializer } from './services/ParticleInitializer';
 import { ParticleFusion } from './services/ParticleFusion';
+import Prestige from './components/Prestige.vue';
+import { ParticleStorage } from './services/ParticleStorage';
+import { SaveService } from './services/SaveService';
+
+// Créer un bus d'événements global
+export const eventBus = {
+    listeners: new Map(),
+    emit(event, data) {
+        if (this.listeners.has(event)) {
+            this.listeners.get(event).forEach(callback => callback(data));
+        }
+    },
+    on(event, callback) {
+        if (!this.listeners.has(event)) {
+            this.listeners.set(event, new Set());
+        }
+        this.listeners.get(event).add(callback);
+    },
+    off(event, callback) {
+        if (this.listeners.has(event)) {
+            this.listeners.get(event).delete(callback);
+        }
+    }
+};
 
 export default {
   name: 'App',
@@ -99,18 +132,27 @@ export default {
     Generator: GeneratorComponent,
     ParticleCollection,
     ParticleObservation,
-    ParticleFusion
+    ParticleFusion,
+    Prestige
   },
   setup() {
+    const saveService = new SaveService();
+    const particleStorage = new ParticleStorage();
+
     // État local réactif pour l'affichage
     const gameState = reactive({
       resources: new Map(),
       generators: [],
-      particles: []
+      particles: [],
+      prestigeLevel: 0,
+      prestigeMultiplier: 1,
+      antiparticlesUnlocked: false,
+      supersymmetricParticlesUnlocked: false
     });
 
     const isDebugEnabled = ref(false);
     let updateInterval;
+    let saveInterval;
 
     const formatNumber = (num, decimals = 2) => {
       if (num === undefined || num === null) return '0';
@@ -182,6 +224,79 @@ export default {
        return { resources: new Map([[potentiel.name, potentiel], [etats.name, etats]]), generators: initialGenerators };
     };
 
+    const resetGame = () => {
+      if (confirm('Êtes-vous sûr de vouloir réinitialiser le jeu ? Toutes les données seront perdues.')) {
+        saveService.clearSave();
+        particleStorage.clear();
+        
+        // Réinitialiser l'état du jeu
+        const initialData = initializeGameData();
+        gameState.resources = reactive(initialData.resources);
+        gameState.generators = reactive(initialData.generators);
+        gameState.particles = [];
+        gameState.prestigeLevel = 0;
+        gameState.prestigeMultiplier = 1;
+        gameState.antiparticlesUnlocked = false;
+        gameState.supersymmetricParticlesUnlocked = false;
+
+        // Réinitialiser le TickService
+        TickService.setGameStateCollections(gameState.resources, gameState.generators);
+      }
+    };
+
+    const loadSavedGame = () => {
+      const savedData = saveService.loadGame();
+      if (savedData) {
+        console.log('Chargement des données sauvegardées:', savedData);
+
+        // Charger les ressources
+        savedData.resources.forEach(resourceData => {
+          const resource = gameState.resources.get(resourceData.name);
+          if (resource) {
+            resource.value = resourceData.value;
+            resource.totalEarned = resourceData.totalEarned;
+            resource.nextStateMilestone = resourceData.nextStateMilestone;
+            if (resourceData.generators !== undefined) {
+              resource.generators = resourceData.generators;
+            }
+          }
+        });
+
+        // Charger les générateurs
+        savedData.generators.forEach(generatorData => {
+          const generator = gameState.generators.find(g => g.rank === generatorData.rank);
+          if (generator) {
+            generator.count = generatorData.count;
+            generator.reachedMilestones = generatorData.reachedMilestones;
+          }
+        });
+
+        // Charger les particules une seule fois
+        if (savedData.particles && savedData.particles.length > 0) {
+          const loadedParticles = savedData.particles.map(p => Particle.fromJSON(p));
+          gameState.particles = loadedParticles;
+          particleStorage.particles = loadedParticles;
+        }
+
+        // Charger les données de prestige
+        if (savedData.prestigeLevel !== undefined) {
+          gameState.prestigeLevel = savedData.prestigeLevel;
+        }
+        if (savedData.prestigeMultiplier !== undefined) {
+          gameState.prestigeMultiplier = savedData.prestigeMultiplier;
+        }
+        if (savedData.antiparticlesUnlocked !== undefined) {
+          gameState.antiparticlesUnlocked = savedData.antiparticlesUnlocked;
+        }
+        if (savedData.supersymmetricParticlesUnlocked !== undefined) {
+          gameState.supersymmetricParticlesUnlocked = savedData.supersymmetricParticlesUnlocked;
+        }
+      }
+    };
+
+    const saveGame = () => {
+      saveService.saveGame(gameState);
+    };
 
     onMounted(() => {
       // Initialiser les données du jeu (ressources et générateurs)
@@ -194,22 +309,29 @@ export default {
       // Passer les collections réactives au TickService
       TickService.setGameStateCollections(gameState.resources, gameState.generators);
 
+      // Charger la sauvegarde si elle existe
+      loadSavedGame();
+
       // Initialiser les particules
       const particleInitializer = new ParticleInitializer();
       particleInitializer.initialize();
 
       // Démarrer le système de ticks
       TickService.start();
+
+      // Sauvegarder toutes les 5 secondes
+      saveInterval = setInterval(saveGame, 5000);
     });
 
     onUnmounted(() => {
       TickService.stop();
+      clearInterval(saveInterval);
+      saveGame(); // Sauvegarder une dernière fois avant de quitter
     });
 
     const handleParticleObserved = (data) => {
       console.log('Particule observée:', data);
       // Mettre à jour l'état des particules dans gameState
-      // Ajouter la particule observée à la collection
       gameState.particles.push(data.particle);
 
       // Consommer les générateurs du rang approprié
@@ -219,9 +341,14 @@ export default {
         // Assurez-vous que le count ne devient pas négatif
         if (generator.count < 0) generator.count = 0;
       }
+
+      // Sauvegarder la particule dans le stockage
+      particleStorage.addParticle(data.particle);
+      
+      // Émettre un événement pour notifier du changement
+      eventBus.emit('particles-changed', gameState.particles);
     };
 
-    // Nouvelle méthode pour gérer la fusion des particules
     const handleParticleFusion = (data) => {
       console.log('Tentative de fusion de particules de type:', data.type);
       const fusionService = new ParticleFusion();
@@ -233,6 +360,9 @@ export default {
           // Mettre à jour la liste des particules avec les nouvelles données
           gameState.particles = fusionService.particles;
           console.log('Particule fusionnée ajoutée:', newParticle);
+          
+          // Émettre un événement pour notifier du changement
+          eventBus.emit('particles-changed', gameState.particles);
         }
       } catch (error) {
         console.error('Erreur lors de la fusion:', error);
@@ -281,7 +411,8 @@ export default {
       handleParticleFusion,
       getTotalDtMultiplier,
       getTotalGeneratorBonus,
-      getTotalCostReduction
+      getTotalCostReduction,
+      resetGame
     };
   }
 }
@@ -470,5 +601,31 @@ body {
     margin-left: 0;
     margin-top: 5px;
   }
+}
+
+.prestige-section {
+  grid-column: 1 / -1;
+  margin-top: 20px;
+}
+
+.debug-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.reset-button {
+  padding: 5px 10px;
+  background: #2a2a4a;
+  color: #ff4757;
+  border: 1px solid #ff4757;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Roboto Mono', monospace;
+  transition: all 0.2s;
+}
+
+.reset-button:hover {
+  background: #ff4757;
+  color: #1a1a2e;
 }
 </style> 

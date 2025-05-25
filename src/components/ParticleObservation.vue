@@ -54,6 +54,10 @@ export default {
     generators: {
       type: Array,
       required: true
+    },
+    isDebugMode: {
+      type: Boolean,
+      default: false
     }
   },
   setup(props, { emit }) {
@@ -61,7 +65,7 @@ export default {
     const lastObservation = ref(null);
 
     const getObservationCost = (rank) => {
-      return observationService.getObservationCost(rank);
+      return props.isDebugMode ? 0 : observationService.getObservationCost(rank);
     };
 
     const getGeneratorCount = (rank) => {
@@ -70,19 +74,19 @@ export default {
     };
 
     const canObserve = (rank) => {
+      if (props.isDebugMode) return true;
+
       const generator = props.generators.find(g => g.rank === rank);
-      if (!generator) return false; // Cannot observe if the generator of this rank doesn't exist
+      if (!generator) return false;
 
       const hasEnoughGenerators = observationService.canObserve(rank, generator.count);
 
-      // Pour les rangs 1 et 2, vérifier si le joueur a au moins un générateur du rang supérieur
       if (rank < 3) {
         const nextRank = rank + 1;
         const nextGenerator = props.generators.find(g => g.rank === nextRank);
         const hasNextGenerator = nextGenerator && nextGenerator.count > 0;
         return hasEnoughGenerators && hasNextGenerator;
       } else {
-        // Pour le rang 3, seule la condition du nombre de générateurs actuels s'applique
         return hasEnoughGenerators;
       }
     };
@@ -92,11 +96,10 @@ export default {
         const result = observationService.observe(rank);
         lastObservation.value = { ...result, rank };
         
-        // Émettre l'événement avec le rang pour la consommation des générateurs
         emit('particle-observed', {
           particle: result.particle,
           rank: rank,
-          cost: result.cost
+          cost: props.isDebugMode ? 0 : result.cost
         });
       } catch (error) {
         console.error('Erreur lors de l\'observation:', error);
