@@ -161,9 +161,11 @@ export default {
   background: #1a1a2e;
   border: 1px solid #3a3a5a;
   border-radius: 6px;
-  padding: 15px;
-  margin-bottom: 10px;
+  padding: 10px; /* Reduced padding */
+  margin-bottom: 8px; /* Reduced margin-bottom */
   transition: all 0.3s ease;
+  display: flex; /* Added flex for better internal layout control */
+  flex-direction: column; /* Stack children vertically */
 }
 
 .generator.locked {
@@ -175,43 +177,43 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px; /* Reduced margin-bottom */
 }
 
 .generator-header h4 {
   color: #00ff9d;
   margin: 0;
-  font-size: 1.2em;
+  font-size: 1.1em; /* Reduced font-size */
 }
 
 .generator-count {
   background: #2a2a4a;
   color: #ff9d00;
-  padding: 4px 8px;
+  padding: 3px 6px; /* Reduced padding */
   border-radius: 4px;
   font-family: 'Roboto Mono', monospace;
+  font-size: 0.9em; /* Reduced font-size */
 }
 
 .generator-info {
-  margin-bottom: 15px;
+  margin-bottom: 10px; /* Reduced margin-bottom */
+  flex-grow: 1; /* Allow info to take available space if generator has fixed height */
 }
 
-.production, .cost {
+.production, .cost, .production-per-generator {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 5px;
+  margin-bottom: 4px; /* Reduced margin-bottom */
 }
 
 .production-per-generator {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 0.9em;
-  color: #888;
+  font-size: 0.85em; /* Reduced font-size */
+  color: #888; /* Retained color for de-emphasis */
 }
 
 .label {
-  color: #888;
+  color: #888; /* Retained color */
+  margin-right: 5px; /* Added margin for separation */
 }
 
 .value {
@@ -226,7 +228,7 @@ export default {
 
 .buy-button {
   width: 100%;
-  padding: 8px;
+  padding: 6px; /* Reduced padding */
   background: #2a2a4a;
   color: #00ff9d;
   border: 1px solid #00ff9d;
@@ -234,6 +236,8 @@ export default {
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'Roboto Mono', monospace;
+  font-size: 0.95em; /* Slightly reduced font-size */
+  margin-top: auto; /* Push button to bottom if generator info is short */
 }
 
 .buy-button:hover:not(:disabled) {
@@ -253,22 +257,22 @@ export default {
 }
 
 .milestones {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 8px; /* Reduced margin-top */
+  padding-top: 8px; /* Reduced padding-top */
   border-top: 1px solid #3a3a5a;
 }
 
 .milestone-progress {
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* Reduced margin-bottom */
 }
 
 .progress-bar {
   width: 100%;
-  height: 8px;
+  height: 6px; /* Reduced height */
   background: #2a2a4a;
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 4px;
+  margin-bottom: 3px; /* Reduced margin-bottom */
 }
 
 .progress-fill {
@@ -278,12 +282,12 @@ export default {
 }
 
 .milestone-text {
-  font-size: 0.9em;
+  font-size: 0.85em; /* Reduced font-size */
   color: #00ff9d;
 }
 
 .reached-milestones {
-  font-size: 0.9em;
+  font-size: 0.85em; /* Reduced font-size */
   color: #ff9d00;
 }
 

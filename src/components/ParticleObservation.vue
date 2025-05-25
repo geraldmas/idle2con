@@ -181,7 +181,7 @@ export default {
 
 <style scoped>
 .observation-panel {
-  padding: 15px;
+  padding: 10px; /* Reduced padding */
   background: #1a1a2e;
   color: #e6e6e6;
   border-radius: 8px;
@@ -191,22 +191,22 @@ export default {
     margin-top: 0;
     color: #00ff9d;
     border-bottom: 1px solid #3a3a5a;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+    padding-bottom: 8px; /* Reduced padding-bottom */
+    margin-bottom: 10px; /* Reduced margin-bottom */
 }
 
 .observation-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-top: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Slightly reduced minmax */
+  gap: 10px; /* Reduced gap */
+  margin-top: 8px; /* Reduced margin-top */
 }
 
 .observation-rank,
 .observation-antiparticle {
   background: #1a1a2e;
   border-radius: 6px;
-  padding: 10px;
+  padding: 8px; /* Reduced padding */
   border: 1px solid #3a3a5a;
   display: flex;
   flex-direction: column;
@@ -215,17 +215,17 @@ export default {
 .observation-rank h3,
 .observation-antiparticle h3 {
     margin-top: 0;
-    margin-bottom: 10px;
+    margin-bottom: 8px; /* Reduced margin-bottom */
     color: #e94560;
-    font-size: 1.1em;
+    font-size: 1.05em; /* Reduced font-size */
 }
 
 .observation-info {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin: 8px 0;
-  font-size: 0.8em;
+  gap: 4px; /* Reduced gap */
+  margin: 6px 0; /* Reduced margin */
+  font-size: 0.75em; /* Reduced font-size */
   color: #a0a0a0;
   flex-grow: 1;
 }
@@ -250,7 +250,7 @@ export default {
 
 button {
   width: 100%;
-  padding: 8px;
+  padding: 6px; /* Reduced padding */
   background: #00ff9d;
   color: #1a1a2e;
   border: none;
@@ -259,8 +259,8 @@ button {
   font-family: 'Roboto Mono', monospace;
   font-weight: bold;
   transition: all 0.2s;
-  font-size: 0.9em;
-  margin-top: 10px;
+  font-size: 0.85em; /* Reduced font-size */
+  margin-top: 8px; /* Reduced margin-top */
 }
 
 button:hover:not(.disabled) {
@@ -275,8 +275,8 @@ button.disabled {
 }
 
 .observation-result {
-  margin-top: 15px;
-  padding: 10px;
+  margin-top: 10px; /* Reduced margin-top */
+  padding: 8px; /* Reduced padding */
   background: #1a1a2e;
   border-radius: 6px;
   border: 1px solid #3a3a5a;
@@ -285,33 +285,33 @@ button.disabled {
 .observation-result h3 {
     margin-top: 0;
     color: #e94560;
-    font-size: 1em;
-    margin-bottom: 10px;
+    font-size: 0.95em; /* Reduced font-size */
+    margin-bottom: 8px; /* Reduced margin-bottom */
 }
 
 .particle-card {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px;
+  gap: 4px; /* Reduced gap */
+  padding: 6px; /* Reduced padding */
   background: #2a2a4a;
   border-radius: 4px;
-  margin-top: 8px;
+  margin-top: 6px; /* Reduced margin-top */
 }
 
 .particle-name {
   color: #00ff9d;
   font-weight: bold;
-  font-size: 0.9em;
+  font-size: 0.85em; /* Reduced font-size */
 }
 
 .particle-generation {
-    font-size: 0.8em;
+    font-size: 0.75em; /* Reduced font-size */
     color: #a0a0a0;
 }
 
 .observation-cost {
-     font-size: 0.8em;
+     font-size: 0.75em; /* Reduced font-size */
     color: #a0a0a0;
 }
 

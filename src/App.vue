@@ -66,6 +66,9 @@
           <h3>Collection et Effets</h3>
           <ParticleCollection
             :particles="gameState.particles"
+            :total-dt-multiplier="getTotalDtMultiplier()"
+            :total-generator-bonus="getTotalGeneratorBonus()"
+            :total-cost-reduction="getTotalCostReduction()"
             @fuse-particles="handleParticleFusion"
           />
         </div>
@@ -149,17 +152,25 @@ export default {
       antiparticleEffects: {}
     });
 
+    const gen1 = computed(() => gameState.generators.find(gen => gen.rank === 1));
+
     const isDebugEnabled = ref(false);
     let updateInterval;
     let saveInterval;
 
     const formatNumber = (num, decimals = 2) => {
       if (num === undefined || num === null) return '0';
-      if (num >= 1000000) {
+      // Utiliser toLocaleString pour une meilleure séparation des milliers si nécessaire,
+      // ou conserver la logique K/M existante. Pour la consistance avec le reste du code :
+      if (Math.abs(num) >= 1000000) {
         return (num / 1000000).toFixed(decimals) + 'M';
       }
-      if (num >= 1000) {
+      if (Math.abs(num) >= 1000) {
         return (num / 1000).toFixed(decimals) + 'K';
+      }
+      // Pour les très petits nombres, utiliser la notation scientifique ou plus de décimales
+      if (Math.abs(num) < 0.001 && num !== 0) {
+        return num.toExponential(decimals > 0 ? decimals -1 : 2);
       }
       return num.toFixed(decimals);
     };
@@ -481,9 +492,44 @@ export default {
     // Fournir l'état du jeu aux composants enfants
     provide('gameState', gameState);
 
+    const baseProductionDisplay = computed(() => formatNumber(1/32, 3));
+    const milestoneBonusDisplay = computed(() => {
+      if (!gen1.value) return "1x";
+      const bonus = gen1.value.getMilestoneBonus();
+      return bonus === 1 ? "1x" : `${formatNumber(bonus, 2)}x`;
+    });
+    const antiparticleMultiplierDisplay = computed(() => {
+      const multiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
+      return multiplier === 1 ? "1x" : `${formatNumber(multiplier, 2)}x`;
+    });
+    const dtDisplay = computed(() => formatNumber(TickService.getDt(), 3));
+
+    const dynamicFormulaText = computed(() => {
+      let formula = `N × a`;
+      if (gen1.value && gen1.value.getMilestoneBonus() > 1) {
+        formula += ` × BonusMS`;
+      }
+      if ((gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1) {
+        formula += ` × BonusAP`;
+      }
+      formula += ` × dt`;
+      return formula;
+    });
+
+    const actualCalculatedProduction = computed(() => {
+      if (!gen1.value) return formatNumber(0);
+      const baseProd = 1/32;
+      const milestoneBonus = gen1.value.getMilestoneBonus();
+      const antiparticleMultiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
+      const dt = TickService.getDt();
+      const production = gen1.value.count * baseProd * milestoneBonus * antiparticleMultiplier * dt;
+      return formatNumber(production, 3);
+    });
+
     // Retourner l'état local réactif pour l'affichage
     return {
       gameState,
+      gen1,
       isDebugEnabled,
       formatNumber,
       toggleDebug,
@@ -491,7 +537,18 @@ export default {
       handleParticleObserved,
       handleParticleFusion,
       resetGame,
-      handleBuyGenerator
+      handleBuyGenerator,
+      // Dynamic formula parts
+      baseProductionDisplay,
+      milestoneBonusDisplay,
+      antiparticleMultiplierDisplay,
+      dtDisplay,
+      dynamicFormulaText,
+      actualCalculatedProduction,
+      // Particle effect totals
+      getTotalDtMultiplier,
+      getTotalGeneratorBonus,
+      getTotalCostReduction,
     };
   }
 }
@@ -505,7 +562,7 @@ body {
   color: #fffffe;
   margin: 0;
   padding: 0;
-  line-height: 1.6;
+  line-height: 1.5; /* Reduced line-height */
 }
 
 .app {
@@ -516,7 +573,7 @@ body {
 
 .app-header {
   background-color: #1a1a2e;
-  padding: 15px 20px;
+  padding: 10px 15px; /* Reduced padding */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
@@ -548,8 +605,8 @@ body {
 .game-container {
   display: flex;
   flex-wrap: wrap; /* Permettre aux sections de passer à la ligne sur petits écrans */
-  padding: 20px;
-  gap: 20px; /* Espacement entre les sections */
+  padding: 15px; /* Reduced padding */
+  gap: 15px; /* Reduced gap */
   flex-grow: 1;
 }
 
@@ -557,7 +614,7 @@ body {
   background: #1a1a2e;
   border: 1px solid #3a3a5a;
   border-radius: 8px;
-  padding: 20px;
+  padding: 15px; /* Reduced padding */
   flex: 1; /* Permettre aux sections de prendre l'espace disponible */
   min-width: 300px; /* Largeur minimale pour les sections */
   display: flex;
@@ -568,8 +625,8 @@ body {
   color: #00ff9d;
   margin-top: 0;
   border-bottom: 1px solid #3a3a5a;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
+  padding-bottom: 8px; /* Reduced padding-bottom */
+  margin-bottom: 15px; /* Reduced margin-bottom */
 }
 
 /* Styles pour les sous-sections (Observation, Collection, etc.) */
@@ -577,8 +634,8 @@ body {
   background: #16213e; /* Couleur de fond légèrement différente */
   border: 1px solid #0f3460;
   border-radius: 6px;
-  padding: 15px;
-  margin-bottom: 15px; /* Espacement entre les sous-sections */
+  padding: 10px; /* Reduced padding */
+  margin-bottom: 10px; /* Reduced margin-bottom */
 }
 
 .subsection:last-child {
@@ -588,47 +645,57 @@ body {
 .subsection h3 {
   color: #e94560; /* Couleur d'accent pour les sous-titres */
   margin-top: 0;
-  margin-bottom: 15px;
+  margin-bottom: 10px; /* Reduced margin-bottom */
   border-bottom: 1px solid #0f3460;
-  padding-bottom: 8px;
+  padding-bottom: 6px; /* Reduced padding-bottom */
 }
 
 /* Styles spécifiques aux panneaux (resources, generators) */
 .resources-panel, .generators-panel {
-  margin-bottom: 20px;
+  margin-bottom: 10px; /* Reduced margin-bottom for generators-panel */
 }
 
 .resources-panel .resource {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 8px; /* Reduced padding */
+  margin-bottom: 8px; /* Reduced margin-bottom */
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* Changed to flex-start for multi-line details */
+  flex-wrap: wrap; /* Allow wrapping for smaller screens / long details */
 }
 
 .resource-name {
   color: #a9b3c1;
   font-weight: bold;
+  margin-right: 10px; /* Add some space between name and value/details */
 }
 
 .resource-value {
   color: #e6e6e6;
   font-family: 'Roboto Mono', monospace;
+  font-weight: 600; /* Slightly bolder */
+  text-align: right; /* Align to right if it wraps below name */
+  flex-grow: 1; /* Allow it to take space */
 }
 
 .resource-details {
-  font-size: 0.8em;
+  font-size: 0.75em; /* Reduced font-size */
   color: #a9b3c1;
-  margin-left: 10px;
+  margin-left: 0; /* Removed margin, will be child of flex container */
+  line-height: 1.4; /* Reduced line-height */
+  width: 100%; /* Take full width for details block */
+  margin-top: 4px; /* Add a small top margin */
 }
 
 .resource-next-milestone {
-   font-size: 0.9em;
+  font-size: 0.8em; /* Reduced font-size */
   color: #00ff9d;
-  margin-left: 10px;
+  margin-left: 0; /* Removed margin */
+  width: 100%; /* Take full width */
+  margin-top: 4px; /* Add a small top margin */
 }
 
 /* Media Queries pour le Responsive Design */
