@@ -18,6 +18,7 @@ This document outlines future development tasks and ideas for the chaotic idle g
     *   [x] Tier 1-4 names and roles to be updated for new theme.
 *   **Unlock Mechanics Refinement:**
     *   [~] Implement more diverse unlock conditions for new generators or features (e.g., reaching a certain amount of a specific resource, owning X of multiple generator types, total time played).
+    *   [x] Implement more diverse unlock conditions for new generators or features (e.g., reaching a certain amount of a specific resource, owning X of multiple generator types, total time played).
     *   [ ] Provide clear UI feedback for locked elements, showing unlock requirements.
     *   [x] Unlock conditions for Tiers 2, 3, and 4 implemented. (Assuming Tier 4 unlock was done)
 *   **Offline Progress:**
@@ -63,8 +64,30 @@ This document outlines future development tasks and ideas for the chaotic idle g
 *   **Modularity:**
     *   [ ] Continue to separate concerns in JavaScript (e.g., UI update logic, game state logic, utility functions). Consider splitting into multiple JS files if `script.js` becomes too large.
 *   **Comments and Documentation:**
-    *   [ ] Keep code well-commented, especially for complex logic or thematic tie-ins.
+    *   [x] Keep code well-commented, especially for complex logic or thematic tie-ins.
 *   **Performance:**
     *   [ ] Profile performance as the game grows, especially the game loop and UI updates, to ensure it remains smooth.
+*   **Specific Refactorings Completed:**
+    *   [x] Refactor `calculateMaxBuy` to use a formula-based approach for performance.
+    *   [x] Refactor `checkUnlocks` to be data-driven via `gameData.generators` for improved maintainability.
+    *   [x] Handle negative `timeDelta` in `updateProduction` to prevent resource loss.
+    *   [x] Standardize `formatNumber` behavior for small numbers (use exponential notation consistently).
 
 This list is a starting point and will evolve as the game develops. Prioritize based on what feels most impactful for the next stage of development!
+
+## VI. Idées secondaires à valider, non-urgent
+
+This section lists ideas and potential improvements that are not critical but could be considered for future development cycles after discussion and validation.
+
+*   **Save Data Migration/Compatibility:**
+    *   [ ] Investigate strategies for handling saved game data from older versions if generator structures change significantly or if generators are removed. Currently, extra saved generators are ignored on load, and missing ones are added with defaults.
+*   **Code Modularity (Further Steps):**
+    *   [ ] Evaluate splitting `script.js` into multiple, more focused files (e.g., `game-logic.js`, `ui-updates.js`, `save-load.js`, `constants.js`) as complexity grows. This is a continuation of the existing modularity goal.
+*   **Performance Monitoring of `calculateMaxBuy`:**
+    *   [ ] The formula-based `calculateMaxBuy` includes a fallback to an iterative method in "catastrophic cases." Monitor if this fallback is triggered frequently, as it might indicate edge cases where the formula struggles or precision issues with very large/small numbers in the logarithmic calculation.
+*   **Advanced Offline Progress Simulation:**
+    *   [ ] For games with very complex interactions or production boosts that activate/deactivate, the current offline progress calculation (simple multiplication) might become inaccurate over very long periods. Consider if a more iterative or simulation-based offline calculation would be beneficial later.
+*   **UI Feedback for Max Buy:**
+    *   [ ] When 'MAX' buy is used, especially with the formula, it might not be immediately obvious to the player *why* a certain number was bought if they can't afford more (e.g., due to rapidly increasing costs). Consider if more feedback is needed (e.g., "Afforded X, next one costs Y").
+*   **Refining `debugFreePurchases` Cap:**
+    *   [ ] The `buyGenerator` function caps purchases at 1000 when `debugFreePurchases` is on and calculated amount is infinite. Evaluate if this cap is always appropriate or if it should be configurable/higher for debugging certain scenarios.
