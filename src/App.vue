@@ -146,7 +146,10 @@ export default {
       prestigeMultiplier: 1,
       antiparticlesUnlocked: false,
       supersymmetricParticlesUnlocked: false,
-      antiparticleEffects: {}
+      antiparticleEffects: {},
+      antipotential: 0, // Ensure this was already there or add it
+      observationCount: 0, // New counter for normal particles
+      antiparticleObservationCount: 0 // New counter for antiparticles
     });
 
     const isDebugEnabled = ref(false);
@@ -292,8 +295,8 @@ export default {
              // Copier les autres propriétés sauvegardées
              generator.count = generatorData.count;
              generator.reachedMilestones = generatorData.reachedMilestones;
-             generator.maxCount = generatorData.maxCount; // S'assurer de charger maxCount
-             generator.manualPurchases = generatorData.manualPurchases; // S'assurer de charger manualPurchases
+             generator.maxCount = generatorData.maxCount || 0; // S'assurer de charger maxCount, default to 0
+             generator.manualPurchases = generatorData.manualPurchases || 0; // S'assurer de charger manualPurchases, default to 0
              // Note: _isUnlocked est une ref, elle sera initialisée correctement dans le constructor
              // et mise à jour par le tick après le chargement de tous les générateurs.
              return generator;
@@ -311,10 +314,43 @@ export default {
         gameState.prestigeMultiplier = savedData.prestigeMultiplier || 1;
         gameState.antiparticlesUnlocked = savedData.antiparticlesUnlocked || false;
         gameState.supersymmetricParticlesUnlocked = savedData.supersymmetricParticlesUnlocked || false;
+        gameState.antipotential = savedData.antipotential || 0; // Ensure antipotential is loaded
+        gameState.observationCount = savedData.observationCount || 0;
+        gameState.antiparticleObservationCount = savedData.antiparticleObservationCount || 0;
          // antiparticleEffects sera recalculé au premier tick
 
         // Mettre à jour particleStorage avec les particules chargées
         particleStorage.particles = loadedParticles;
+
+        // Ensure Gen1 always exists
+        let gen1Instance = gameState.generators.find(gen => gen.rank === 1);
+        if (!gen1Instance) {
+            console.warn("Gen1 was missing from loaded save data or save data was empty. Re-initializing Gen1.");
+            // Create a default Gen1, matching the structure from initializeGameData
+            // Growth rates here are for consistency, actual ones are from Generator class methods
+            const defaultGen1 = markRaw(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.05 })); 
+            defaultGen1.name = 'Générateur Quantique I';
+            defaultGen1.count = 1; // Default to 1 as it's essential. If save had it as 0, it would have loaded as 0.
+                                   // This path is for when Gen1 is *missing* entirely.
+            
+            // Add the new Gen1 and re-sort if necessary to maintain rank order
+            gameState.generators.push(defaultGen1); // Add then sort is safer than unshift if array was empty
+            gameState.generators.sort((a, b) => a.rank - b.rank);
+            gen1Instance = defaultGen1; // gen1Instance is now the newly created one
+        }
+
+        // Ensure Potentiel resource 'generators' count (n) is updated immediately after load
+        const potentielResource = gameState.resources.get('Potentiel');
+        if (potentielResource) {
+            const currentGen1 = gameState.generators.find(gen => gen.rank === 1);
+            if (currentGen1) {
+                potentielResource.setGenerators(currentGen1.count);
+            } else {
+                // Should not happen if the above check and fix for Gen1 works
+                console.error("Critical error: Gen1 still missing after load and attempted fix.");
+                potentielResource.setGenerators(0); // Fallback to 0 production
+            }
+        }
       }
     };
 
@@ -365,13 +401,16 @@ export default {
       // Mettre à jour l'état des particules dans gameState
       gameState.particles.push(data.particle);
 
-      // Consommer les générateurs du rang approprié
-      const generator = gameState.generators.find(g => g.rank === data.rank);
-      if (generator) {
-        generator.count -= data.cost;
-        // Assurez-vous que le count ne devient pas négatif
-        if (generator.count < 0) generator.count = 0;
+      // Consommer les générateurs du rang approprié (IF NOT ANTIPARTICLE)
+      if (!data.isAntiparticle && data.rank) { // Check if it's a normal particle observation
+        // const generator = gameState.generators.find(g => g.rank === data.rank);
+        // if (generator) {
+          // This is now done in ParticleObservation.vue, so REMOVE from here
+          // generator.count -= data.cost; 
+          // if (generator.count < 0) generator.count = 0;
+        // }
       }
+      // Antiparticle cost (antipotential) is also handled in ParticleObservation.vue
 
       // Sauvegarder la particule dans le stockage
       particleStorage.addParticle(data.particle);

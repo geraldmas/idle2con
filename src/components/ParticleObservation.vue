@@ -106,7 +106,8 @@ export default {
     };
 
     const getParticleObservationCostDisplay = () => {
-        return observationService.getParticleObservationCost();
+        // gameState is injected and available
+        return observationService.getParticleObservationCost(gameState.observationCount);
     };
 
     const canObserveAntiparticle = computed(() => {
@@ -114,36 +115,67 @@ export default {
     });
 
      const getAntiparticleObservationCostDisplay = () => {
-        return observationService.getAntiparticleObservationCost(prestigeService);
+        // gameState and prestigeService are available
+        return observationService.getAntiparticleObservationCost(prestigeService, gameState.antiparticleObservationCount);
     };
 
     const observeParticle = (rank) => {
       const generator = props.generators.find(g => g.rank === rank);
-      if (generator && canObserveParticle(rank)) {
+      // canObserveParticle already uses gameState.observationCount via the service method.
+      if (generator && canObserveParticle(rank)) { 
         try {
+          // gameState is passed, observe will use gameState.observationCount internally for cost calc.
           const observationResult = observationService.observe(gameState, prestigeService, false, rank, generator.count);
-          lastObservation.value = { ...observationResult, rank };
+          lastObservation.value = { ...observationResult, rank }; // Store full result for display
 
+          // Consume generator resources
           generator.count -= observationResult.cost;
+          if (generator.count < 0) generator.count = 0; // Ensure not negative
 
-          emit('particle-observed', { particle: observationResult.item, rank, cost: observationResult.cost });
+          // Update the observationCount in gameState
+          gameState.observationCount = observationResult.newObservationCount;
+
+          // Emit event for App.vue to handle particle addition to list and storage
+          emit('particle-observed', { 
+            particle: observationResult.item, 
+            rank, // rank of generator used
+            cost: observationResult.cost 
+          });
 
         } catch (error) {
           console.error('Error observing particle:', error);
+          // Optionally, emit an error event or show a user notification
         }
       }
     };
 
     const observeAntiparticle = () => {
-        if (canObserveAntiparticle.value) {
+        // canObserveAntiparticle already uses gameState.antiparticleObservationCount via the service method
+        if (canObserveAntiparticle.value) { 
             try {
+                // gameState is passed, observe will use gameState.antiparticleObservationCount internally for cost calc.
                 const observationResult = observationService.observe(gameState, prestigeService, true);
-                 lastObservation.value = observationResult;
+                lastObservation.value = observationResult; // Store full result for display
 
-                 emit('particle-observed', { particle: observationResult.item, isAntiparticle: true, cost: observationResult.cost });
+                // Deduct cost from antipotential
+                if (gameState.antipotential !== undefined) {
+                    gameState.antipotential -= observationResult.cost;
+                    if (gameState.antipotential < 0) gameState.antipotential = 0;
+                }
+
+                // Update the antiparticleObservationCount in gameState
+                gameState.antiparticleObservationCount = observationResult.newAntiparticleObservationCount;
+                
+                // Emit event for App.vue to handle particle addition
+                emit('particle-observed', { 
+                  particle: observationResult.item, 
+                  isAntiparticle: true, 
+                  cost: observationResult.cost 
+                });
 
             } catch (error) {
                  console.error('Error observing antiparticle:', error);
+                 // Optionally, emit an error event or show a user notification
             }
         }
     };

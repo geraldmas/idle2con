@@ -1,17 +1,17 @@
 import { ObservationService } from '../ObservationService';
-import { ParticleStorage } from '../ParticleStorage';
+// import { ParticleStorage } from '../ParticleStorage'; // No longer used by ObservationService
 
-jest.mock('../ParticleStorage');
+// jest.mock('../ParticleStorage'); // No longer needed
 
 describe('ObservationService', () => {
     let service;
-    let mockStorage;
+    // let mockStorage; // No longer needed
 
     beforeEach(() => {
-        mockStorage = {
-            addParticle: jest.fn()
-        };
-        ParticleStorage.mockImplementation(() => mockStorage);
+        // mockStorage = { // No longer needed
+        //     addParticle: jest.fn()
+        // };
+        // ParticleStorage.mockImplementation(() => mockStorage); // No longer needed
         service = new ObservationService();
     });
 
@@ -114,6 +114,87 @@ describe('ObservationService', () => {
             expect(particle3.generation).toBe(3);
 
             Math.random = originalRandom;
+        });
+    });
+
+    describe('Antiparticle Observation', () => {
+        let mockGameState;
+        let mockPrestigeServiceInstance;
+
+        beforeEach(() => {
+            // ObservationService instance 'service' is created in the outer beforeEach
+
+            mockGameState = { // A minimal gameState for these tests
+                antipotential: 100,
+                antiparticleObservationCount: 0,
+                observationCount: 0, // Include for completeness, though not primary for these tests
+                antiparticlesUnlocked: true, // Assume unlocked for these tests
+            };
+
+            // Mock the prestigeService instance and its methods
+            mockPrestigeServiceInstance = {
+                isAntiparticlesUnlocked: jest.fn().mockReturnValue(true),
+                getAntiparticleCost: jest.fn().mockImplementation(count => {
+                    // Simple mock: base 3, growth 1.1
+                    return Math.floor(3 * Math.pow(1.1, count));
+                })
+            };
+        });
+
+        test('canObserveAntiparticle should return true if conditions met', () => {
+            mockGameState.antipotential = 10;
+            mockGameState.antiparticleObservationCount = 0; // Cost will be 3
+            expect(service.canObserveAntiparticle(mockGameState, mockPrestigeServiceInstance)).toBe(true);
+            expect(mockPrestigeServiceInstance.isAntiparticlesUnlocked).toHaveBeenCalledWith(mockGameState);
+            expect(mockPrestigeServiceInstance.getAntiparticleCost).toHaveBeenCalledWith(0);
+        });
+
+        test('canObserveAntiparticle should return false if not unlocked', () => {
+            mockPrestigeServiceInstance.isAntiparticlesUnlocked.mockReturnValue(false);
+            mockGameState.antipotential = 10;
+            expect(service.canObserveAntiparticle(mockGameState, mockPrestigeServiceInstance)).toBe(false);
+        });
+
+        test('canObserveAntiparticle should return false if not enough antipotential', () => {
+            mockGameState.antipotential = 2; // Cost for count 0 is 3
+            mockGameState.antiparticleObservationCount = 0;
+            expect(service.canObserveAntiparticle(mockGameState, mockPrestigeServiceInstance)).toBe(false);
+        });
+
+        test('getAntiparticleObservationCost calls prestigeService correctly', () => {
+            // The method in ObservationService is getAntiparticleObservationCost.
+            service.getAntiparticleObservationCost(mockPrestigeServiceInstance, 0);
+            expect(mockPrestigeServiceInstance.getAntiparticleCost).toHaveBeenCalledWith(0);
+            
+            service.getAntiparticleObservationCost(mockPrestigeServiceInstance, 3);
+            expect(mockPrestigeServiceInstance.getAntiparticleCost).toHaveBeenCalledWith(3);
+        });
+
+        test('observe (antiparticle) should return antiparticle and new count, and correct cost', () => {
+            mockGameState.antipotential = 100; // Sufficient for multiple observations
+            mockGameState.antiparticleObservationCount = 1; // Start with a count of 1
+            
+            const originalRandom = Math.random;
+            Math.random = jest.fn().mockReturnValue(0.1); // To pick first antiparticle type
+
+            const result = service.observe(mockGameState, mockPrestigeServiceInstance, true, null, null);
+            
+            expect(result.isAntiparticle).toBe(true);
+            expect(result.item).toBeDefined();
+            // Antiparticles don't have a 'generation' property in the same way as normal particles in current models
+            // expect(result.item.generation).toBeGreaterThanOrEqual(1); // This might fail or be irrelevant
+            expect(result.cost).toBe(Math.floor(3 * Math.pow(1.1, 1))); // Cost for count 1 is 3
+            expect(result.newAntiparticleObservationCount).toBe(mockGameState.antiparticleObservationCount + 1); // Should be 2
+            expect(result.newObservationCount).toBe(mockGameState.observationCount); // Should be unchanged (0)
+
+            Math.random = originalRandom;
+        });
+
+        test('observe (antiparticle) should throw error if cannot observe', () => {
+            mockPrestigeServiceInstance.isAntiparticlesUnlocked.mockReturnValue(false);
+            expect(() => {
+                service.observe(mockGameState, mockPrestigeServiceInstance, true, null, null);
+            }).toThrow('Conditions non remplies pour observer une antiparticule');
         });
     });
 }); 

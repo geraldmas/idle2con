@@ -7,24 +7,21 @@ import { PrestigeService } from './PrestigeService';
 
 export class ObservationService {
     constructor() {
-        this.storage = new ParticleStorage();
+        // this.storage = new ParticleStorage(); // ParticleStorage is not used by this service anymore
         this.baseCost = 10; // Coût de base pour les particules normales en générateurs
         this.costGrowthRate = 1.1; // Taux de croissance du coût des particules normales
-        this.observationCount = 0; // Compteur d'observations de particules normales
-
-        // Coût et compteur pour les antiparticules
-        // Les valeurs de base et taux de croissance sont dans PrestigeService
-        this.antiparticleObservationCount = 0; // Compteur d'observations d'antiparticules
+        // this.observationCount = 0; // Removed
+        // this.antiparticleObservationCount = 0; // Removed
     }
 
     canObserveParticle(generatorRank, generatorCount, gameState) {
         // Assurez-vous que gameState et ses propriétés sont valides
-        const requiredGenerators = this.getParticleObservationCost(); // Coût basé sur le compteur de particules normales
+        const requiredGenerators = this.getParticleObservationCost(gameState.observationCount);
         return generatorCount >= requiredGenerators;
     }
 
-    getParticleObservationCost() {
-        return Math.floor(this.baseCost * Math.pow(this.costGrowthRate, this.observationCount));
+    getParticleObservationCost(currentObservationCount) {
+        return Math.floor(this.baseCost * Math.pow(this.costGrowthRate, currentObservationCount));
     }
 
     canObserveAntiparticle(gameState, prestigeService) {
@@ -37,59 +34,57 @@ export class ObservationService {
         // Vérifier si le joueur a assez d'antipotentiel
         const currentAntipotential = gameState?.antipotential || 0;
         // Calculer le coût requis APRES avoir vérifié le déblocage
-        const requiredAntipotential = prestigeService.getAntiparticleCost(this.antiparticleObservationCount); // Coût basé sur le compteur d'antiparticules
-
+        const requiredAntipotential = this.getAntiparticleObservationCost(prestigeService, gameState.antiparticleObservationCount);
         return currentAntipotential >= requiredAntipotential;
     }
 
-    getAntiparticleObservationCost(prestigeService) {
+    getAntiparticleObservationCost(prestigeService, currentAntiparticleObservationCount) {
         // Le coût est géré par le PrestigeService
-        return prestigeService.getAntiparticleCost(this.antiparticleObservationCount);
+        return prestigeService.getAntiparticleCost(currentAntiparticleObservationCount);
     }
 
     observe(gameState, prestigeService, isAntiparticle = false, generatorRank = null, generatorCount = null) {
         let observedItem = null;
         let costPaid = 0;
+        let updatedObservationCount = gameState.observationCount; // Get current counts
+        let updatedAntiparticleObservationCount = gameState.antiparticleObservationCount;
 
         if (isAntiparticle) {
-            if (!this.canObserveAntiparticle(gameState, prestigeService)) {
+            if (!this.canObserveAntiparticle(gameState, prestigeService)) { // Uses gameState.antiparticleObservationCount
                 throw new Error('Conditions non remplies pour observer une antiparticule');
             }
-            // Payer le coût en antipotentiel
-            costPaid = this.getAntiparticleObservationCost(prestigeService);
-            gameState.antipotential = (gameState.antipotential || 0) - costPaid;
+            costPaid = this.getAntiparticleObservationCost(prestigeService, gameState.antiparticleObservationCount);
+            // gameState.antipotential is modified by the caller (App.vue or ParticleObservation.vue)
             
-            // Générer une antiparticule
-            observedItem = this.generateRandomParticle(null, true); // rang est null pour antiparticule
-            this.storage.addParticle(observedItem); // Ajouter l'antiparticule au stockage (même stockage que les particules normales?)
-            
-            // Incrémenter le compteur d'observations d'antiparticules
-            this.antiparticleObservationCount++;
+            observedItem = this.generateRandomParticle(null, true);
+            // this.storage.addParticle(observedItem); // Caller should handle adding to particle list / storage
 
-        } else { // Observer une particule normale
-            if (generatorRank === null || generatorCount === null) {
+            updatedAntiparticleObservationCount = gameState.antiparticleObservationCount + 1; // Prepare new count
+        } else { // Observe une particule normale
+            if (generatorRank === null || generatorCount === null) { // generatorCount is for canObserveParticle check
                 throw new Error('Rang et compte de générateur requis pour observer une particule normale');
             }
-            if (!this.canObserveParticle(generatorRank, generatorCount, gameState)) {
-                throw new Error(`Pas assez de générateurs de rang ${generatorRank} pour observer`);
-            }
-            // Payer le coût en générateurs
-            costPaid = this.getParticleObservationCost();
-            // Assurez-vous que la logique pour réduire le count du générateur est ailleurs (dans App.vue ou le composant)
-            // gameState.generators... trouver le générateur et réduire son count
-            
-            // Déterminer la génération de particule à obtenir selon le rang
+            // canObserveParticle check should be done by the caller using gameState.observationCount
+            // For safety, or if this service is called directly, it might be good to have a check here too.
+            // However, to keep it simple, assume caller checks canObserveParticle.
+            // if (!this.canObserveParticle(generatorRank, generatorCount, gameState)) {
+            //     throw new Error(`Pas assez de générateurs de rang ${generatorRank} pour observer`);
+            // }
+            costPaid = this.getParticleObservationCost(gameState.observationCount);
+            // Deduction of generator cost is handled by the caller
+
             observedItem = this.generateRandomParticle(generatorRank, false);
-            this.storage.addParticle(observedItem); // Ajouter la particule au stockage
-            
-            // Incrémenter le compteur d'observations de particules normales
-            this.observationCount++;
+            // this.storage.addParticle(observedItem); // Caller should handle
+
+            updatedObservationCount = gameState.observationCount + 1; // Prepare new count
         }
 
-        return { // Retourner l'objet observé et le coût payé
+        return {
             item: observedItem,
             cost: costPaid,
-            isAntiparticle: isAntiparticle
+            isAntiparticle: isAntiparticle,
+            newObservationCount: updatedObservationCount, // For normal particles
+            newAntiparticleObservationCount: updatedAntiparticleObservationCount // For antiparticles
         };
     }
 
@@ -156,11 +151,11 @@ export class ObservationService {
     }
 
     // Méthodes pour obtenir les compteurs d'observations si nécessaire pour l'affichage
-    getObservationCount() {
-        return this.observationCount;
-    }
+    // getObservationCount() { // Removed
+    //     return this.observationCount;
+    // }
 
-    getAntiparticleObservationCount() {
-        return this.antiparticleObservationCount;
-    }
+    // getAntiparticleObservationCount() { // Removed
+    //     return this.antiparticleObservationCount;
+    // }
 } 

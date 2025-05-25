@@ -26,14 +26,19 @@ export class SaveService {
           return {
             rank: generator.rank,
             count: generator.count,
-            reachedMilestones: generator.reachedMilestones
+            reachedMilestones: generator.reachedMilestones,
+            maxCount: generator.maxCount, // Add this line
+            manualPurchases: generator.manualPurchases // Add this line
           };
         }),
         particles: this.particleStorage.getParticles().map(p => p.toJSON()),
         prestigeLevel: gameState.prestigeLevel || 0,
         prestigeMultiplier: gameState.prestigeMultiplier || 1,
         antiparticlesUnlocked: gameState.antiparticlesUnlocked || false,
-        supersymmetricParticlesUnlocked: gameState.supersymmetricParticlesUnlocked || false
+        supersymmetricParticlesUnlocked: gameState.supersymmetricParticlesUnlocked || false,
+        antipotential: gameState.antipotential || 0,
+        observationCount: gameState.observationCount || 0,
+        antiparticleObservationCount: gameState.antiparticleObservationCount || 0
       };
 
       console.log('Données à sauvegarder:', saveData);

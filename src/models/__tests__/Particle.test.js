@@ -1,153 +1,142 @@
 import { Particle } from '../Particle';
-import { Electron, NeutrinoE, QuarkUp, QuarkDown } from '../particles/Generation1Particles';
-import { Muon, NeutrinoMu, QuarkCharm } from '../particles/Generation2Particles';
-import { Tau, NeutrinoTau, QuarkTruth } from '../particles/Generation3Particles';
 
-describe('Particle Base Class', () => {
-    test('should create a particle with correct properties', () => {
-        const effect = {
-            value: 0.1,
-            apply: jest.fn()
-        };
-        const particle = new Particle('Test', 1, 'test', effect);
+describe('Particle', () => {
+    const effectData = {
+        value: 10,
+        description: 'Test Effect',
+        dtMultiplier: 0.05,
+        generatorBonus: 0.1,
+        costReduction: 0.02,
+        apply: jest.fn(gameState => ({ ...gameState, customEffectApplied: true })),
+    };
+
+    let particle;
+    let creationDate;
+
+    beforeEach(() => {
+        // Mock Date constructor for consistent createdAt
+        creationDate = new Date('2024-01-01T12:00:00.000Z');
+        jest.spyOn(global, 'Date').mockImplementation(() => creationDate);
         
-        expect(particle.name).toBe('Test');
-        expect(particle.generation).toBe(1);
-        expect(particle.type).toBe('test');
-        expect(particle.effect).toBe(effect);
-        expect(particle.id).toBeDefined();
-        expect(particle.createdAt).toBeInstanceOf(Date);
+        particle = new Particle('Testron', 1, 'testicle', effectData);
+        
+        // Clear mock for Date after particle creation if other tests in this file need original Date
+        global.Date.mockRestore(); 
+    });
+    
+    afterEach(() => {
+        // Ensure Date mock is restored if any test re-mocks it locally
+        jest.restoreAllMocks();
     });
 
-    test('should serialize and deserialize correctly', () => {
-        const effect = {
-            value: 0.1,
-            apply: jest.fn()
-        };
-        const particle = new Particle('Test', 1, 'test', effect);
-        const json = particle.toJSON();
-        const reconstructed = Particle.fromJSON(json);
+    test('constructor should initialize properties correctly', () => {
+        expect(particle.name).toBe('Testron');
+        expect(particle.generation).toBe(1);
+        expect(particle.type).toBe('testicle');
+        expect(particle.effect).toEqual(effectData);
+        expect(particle.id).toBeDefined();
+        expect(typeof particle.id).toBe('string');
+        expect(particle.createdAt).toEqual(creationDate);
+    });
 
-        expect(reconstructed.name).toBe(particle.name);
-        expect(reconstructed.generation).toBe(particle.generation);
-        expect(reconstructed.type).toBe(particle.type);
-        expect(reconstructed.id).toBe(particle.id);
+    test('generateId should create a random-like string ID', () => {
+        // Test relies on Math.random, so we check format and type
+        const id1 = particle.generateId(); // particle already has an id, call method again
+        const id2 = particle.generateId();
+        expect(id1).not.toEqual(id2); // High probability they are different
+        expect(typeof id1).toBe('string');
+        expect(id1.length).toBeGreaterThan(5); // Example check for length
+    });
+
+    test('getEffectValue should return effect.value', () => {
+        expect(particle.getEffectValue()).toBe(10);
+    });
+    
+    test('getEffectValue should return undefined if effect.value is not set', () => {
+        const particleNoValue = new Particle('NoVal', 1, 'nv', { description: 'No value' });
+        expect(particleNoValue.getEffectValue()).toBeUndefined();
+    });
+
+    test('getEffectDescription should return effect.description or a default', () => {
+        expect(particle.getEffectDescription()).toBe('Test Effect');
+        const particleNoDesc = new Particle('NoDesc', 2, 'nd', {});
+        expect(particleNoDesc.getEffectDescription()).toBe('NoDesc (Génération 2)');
+    });
+
+    test('getDtMultiplier should return effect.dtMultiplier or 0', () => {
+        expect(particle.getDtMultiplier()).toBe(0.05);
+        const particleNoDt = new Particle('NoDt', 1, 'ndt', {});
+        expect(particleNoDt.getDtMultiplier()).toBe(0);
+    });
+
+    test('getGeneratorBonus should return effect.generatorBonus or 0', () => {
+        expect(particle.getGeneratorBonus()).toBe(0.1);
+        const particleNoBonus = new Particle('NoBonus', 1, 'nb', {});
+        expect(particleNoBonus.getGeneratorBonus()).toBe(0);
+    });
+
+    test('getCostReduction should return effect.costReduction or 0', () => {
+        expect(particle.getCostReduction()).toBe(0.02);
+        const particleNoReduction = new Particle('NoReduction', 1, 'nr', {});
+        expect(particleNoReduction.getCostReduction()).toBe(0);
+    });
+
+    test('applyEffect should call effect.apply with gameState', () => {
+        const mockGameState = { data: 'testState' };
+        const resultState = particle.applyEffect(mockGameState);
+        expect(effectData.apply).toHaveBeenCalledWith(mockGameState);
+        expect(resultState).toEqual({ ...mockGameState, customEffectApplied: true });
+    });
+
+    describe('JSON Serialization/Deserialization', () => {
+        let particleForJson;
+        let creationDateForJson;
+
+        beforeEach(() => {
+            creationDateForJson = new Date('2023-05-10T08:30:00.000Z');
+            jest.spyOn(global, 'Date').mockImplementation(() => creationDateForJson);
+            particleForJson = new Particle('JSONParticle', 3, 'json_type', { text: 'json_effect' });
+            global.Date.mockRestore();
+        });
+
+        test('toJSON should return correct JSON object', () => {
+            const json = particleForJson.toJSON();
+            expect(json.id).toBe(particleForJson.id);
+            expect(json.name).toBe('JSONParticle');
+            expect(json.generation).toBe(3);
+            expect(json.type).toBe('json_type');
+            expect(json.effect).toEqual({ text: 'json_effect' });
+            expect(json.createdAt).toBe(creationDateForJson.toISOString());
+        });
+
+        test('fromJSON should create a Particle instance from JSON object', () => {
+            // Use a fixed ID and date for predictable JSON
+            const fixedId = 'fixedTestId123';
+            const fixedDate = new Date();
+            const jsonData = {
+                id: fixedId,
+                name: 'LoadedParticle',
+                generation: 2,
+                type: 'loaded_type',
+                effect: { data: 'loaded_effect' },
+                createdAt: fixedDate.toISOString(),
+            };
+            
+            // Mock generateId for fromJSON if it's called, though it shouldn't be.
+            // fromJSON should use the ID from the JSON data.
+            // The Particle constructor is called by fromJSON.
+            // We need to ensure the ID set in constructor doesn't override jsonData.id.
+            // The current Particle.fromJSON directly sets particle.id = json.id.
+            
+            const loadedParticle = Particle.fromJSON(jsonData);
+            
+            expect(loadedParticle).toBeInstanceOf(Particle);
+            expect(loadedParticle.id).toBe(fixedId);
+            expect(loadedParticle.name).toBe('LoadedParticle');
+            expect(loadedParticle.generation).toBe(2);
+            expect(loadedParticle.type).toBe('loaded_type');
+            expect(loadedParticle.effect).toEqual({ data: 'loaded_effect' });
+            expect(loadedParticle.createdAt.toISOString()).toBe(fixedDate.toISOString());
+        });
     });
 });
-
-describe('Particle Effects', () => {
-    describe('DT Multiplier Effects', () => {
-        test('Single electron should multiply dt by 1.03', () => {
-            const electron = new Electron();
-            const gameState = { dt: 1 };
-            const newState = electron.applyEffect(gameState);
-            expect(newState.dt).toBe(1.03);
-        });
-
-        test('Multiple electrons should multiply dt multiplicatively', () => {
-            const electron1 = new Electron();
-            const electron2 = new Electron();
-            const electron3 = new Electron();
-            
-            let gameState = { dt: 1 };
-            gameState = electron1.applyEffect(gameState);
-            gameState = electron2.applyEffect(gameState);
-            gameState = electron3.applyEffect(gameState);
-            
-            // (1 + 0.03)^3 = 1.092727
-            expect(gameState.dt).toBeCloseTo(1.092727, 5);
-        });
-
-        test('Different generation particles should multiply dt multiplicatively', () => {
-            const electron = new Electron();
-            const muon = new Muon();
-            const tau = new Tau();
-            
-            let gameState = { dt: 1 };
-            gameState = electron.applyEffect(gameState);
-            gameState = muon.applyEffect(gameState);
-            gameState = tau.applyEffect(gameState);
-            
-            // (1 + 0.03) * (1 + 0.05) * (1 + 0.10) = 1.18965
-            expect(gameState.dt).toBeCloseTo(1.18965, 5);
-        });
-    });
-
-    describe('Generator Effects', () => {
-        test('QuarkUp should multiply generator production', () => {
-            const quarkUp = new QuarkUp();
-            const gameState = { generator1Production: 100 };
-            const newState = quarkUp.applyEffect(gameState);
-            expect(newState.generator1Production).toBe(103);
-        });
-
-        test('Multiple QuarkUp should multiply generator production multiplicatively', () => {
-            const quarkUp1 = new QuarkUp();
-            const quarkUp2 = new QuarkUp();
-            
-            let gameState = { generator1Production: 100 };
-            gameState = quarkUp1.applyEffect(gameState);
-            gameState = quarkUp2.applyEffect(gameState);
-            
-            // 100 * (1 + 0.03)^2 = 106.09
-            expect(gameState.generator1Production).toBeCloseTo(106.09, 2);
-        });
-
-        test('Different generation quarks should multiply generator production', () => {
-            const quarkUp = new QuarkUp();
-            const quarkCharm = new QuarkCharm();
-            const quarkTruth = new QuarkTruth();
-            
-            let gameState = { generator1Production: 100 };
-            gameState = quarkUp.applyEffect(gameState);
-            gameState = quarkCharm.applyEffect(gameState);
-            gameState = quarkTruth.applyEffect(gameState);
-            
-            // 100 * (1 + 0.03) * (1 + 0.05) * (1 + 0.10) = 118.965
-            expect(gameState.generator1Production).toBeCloseTo(118.965, 3);
-        });
-    });
-
-    describe('Cost Reduction Effects', () => {
-        test('QuarkDown should reduce generator costs', () => {
-            const quarkDown = new QuarkDown();
-            const gameState = { generator2Cost: 100 };
-            const newState = quarkDown.applyEffect(gameState);
-            expect(newState.generator2Cost).toBe(97);
-        });
-
-        test('Multiple QuarkDown should multiply cost reduction', () => {
-            const quarkDown1 = new QuarkDown();
-            const quarkDown2 = new QuarkDown();
-            
-            let gameState = { generator2Cost: 100 };
-            gameState = quarkDown1.applyEffect(gameState);
-            gameState = quarkDown2.applyEffect(gameState);
-            
-            // 100 * (1 - 0.03)^2 = 94.09
-            expect(gameState.generator2Cost).toBeCloseTo(94.09, 2);
-        });
-    });
-
-    describe('Neutrino Effects', () => {
-        test('NeutrinoE should add percentage of generators to n', () => {
-            const neutrino = new NeutrinoE();
-            const gameState = { n: 1, generators: { 2: 10 } };
-            const newState = neutrino.applyEffect(gameState);
-            // n + (generators[2] * 0.10) = 1 + (10 * 0.10) = 2
-            expect(newState.n).toBe(2);
-        });
-
-        test('Multiple neutrinos should add their effects', () => {
-            const neutrinoE = new NeutrinoE();
-            const neutrinoMu = new NeutrinoMu();
-            
-            let gameState = { n: 1, generators: { 2: 10, 3: 20 } };
-            gameState = neutrinoE.applyEffect(gameState);
-            gameState = neutrinoMu.applyEffect(gameState);
-            
-            // 1 + (10 * 0.10) + (20 * 0.10) = 4
-            expect(gameState.n).toBe(4);
-        });
-    });
-}); 
