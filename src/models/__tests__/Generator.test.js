@@ -37,46 +37,53 @@ describe('Generator', () => {
     test('getCost calculates state cost correctly for each rank', () => {
         // Test Generator 1
         const gen1 = generators[1];
-        expect(gen1.getCost()).toBe(1); // count = 0, cost = 1 * 1.2^0 = 1
-        gen1.count = 1;
+        gen1.manualPurchases = 0;
+        expect(gen1.getCost()).toBe(1); // manualPurchases = 0, cost = 1 * 1.2^0 = 1
+        gen1.manualPurchases = 1;
         expect(gen1.getCost()).toBe(Math.floor(1 * Math.pow(1.2, 1)));
 
         // Test Generator 2
         const gen2 = generators[2];
-        expect(gen2.getCost()).toBe(10); // count = 0, cost = 10 * 1.3^0 = 10
-        gen2.count = 1;
+        gen2.manualPurchases = 0;
+        expect(gen2.getCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.3^0 = 10
+        gen2.manualPurchases = 1;
         expect(gen2.getCost()).toBe(Math.floor(10 * Math.pow(1.3, 1)));
 
         // Test Generator 3
         const gen3 = generators[3];
-        expect(gen3.getCost()).toBe(10); // count = 0, cost = 10 * 1.4^0 = 10
-        gen3.count = 1;
+        gen3.manualPurchases = 0;
+        expect(gen3.getCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.4^0 = 10
+        gen3.manualPurchases = 1;
         expect(gen3.getCost()).toBe(Math.floor(10 * Math.pow(1.4, 1)));
 
         // Test Generator 4
         const gen4 = generators[4];
-        expect(gen4.getCost()).toBe(10); // count = 0, cost = 10 * 1.5^0 = 10
-        gen4.count = 1;
+        gen4.manualPurchases = 0;
+        expect(gen4.getCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.5^0 = 10
+        gen4.manualPurchases = 1;
         expect(gen4.getCost()).toBe(Math.floor(10 * Math.pow(1.5, 1)));
     });
 
     test('getGeneratorCost calculates previous generator cost correctly for each rank', () => {
         // Test Generator 2
         const gen2 = generators[2];
-        expect(gen2.getGeneratorCost()).toBe(10); // count = 0, cost = 10 * 1.1^0 = 10
-        gen2.count = 1;
+        gen2.manualPurchases = 0;
+        expect(gen2.getGeneratorCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.1^0 = 10
+        gen2.manualPurchases = 1;
         expect(gen2.getGeneratorCost()).toBe(Math.floor(10 * Math.pow(1.1, 1)));
 
         // Test Generator 3
         const gen3 = generators[3];
-        expect(gen3.getGeneratorCost()).toBe(10); // count = 0, cost = 10 * 1.2^0 = 10
-        gen3.count = 1;
+        gen3.manualPurchases = 0;
+        expect(gen3.getGeneratorCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.2^0 = 10
+        gen3.manualPurchases = 1;
         expect(gen3.getGeneratorCost()).toBe(Math.floor(10 * Math.pow(1.2, 1)));
 
         // Test Generator 4
         const gen4 = generators[4];
-        expect(gen4.getGeneratorCost()).toBe(10); // count = 0, cost = 10 * 1.3^0 = 10
-        gen4.count = 1;
+        gen4.manualPurchases = 0;
+        expect(gen4.getGeneratorCost()).toBe(10); // manualPurchases = 0, cost = 10 * 1.3^0 = 10
+        gen4.manualPurchases = 1;
         expect(gen4.getGeneratorCost()).toBe(Math.floor(10 * Math.pow(1.3, 1)));
     });
 
@@ -125,14 +132,19 @@ describe('Generator', () => {
         resources.value = 1;
         expect(gen1.purchase(resources, generators)).toBe(true);
         expect(gen1.count).toBe(1);
+        expect(gen1.manualPurchases).toBe(1); // Vérifier que manualPurchases est incrémenté
         expect(resources.value).toBe(0);
 
         // Test Generator 2
         const gen2 = generators[2];
         resources.value = 10;
         generators[1].count = 10;
+        generators[1].maxCount = 10; // S'assurer que maxCount est à jour pour le déblocage
+        gen2.updateUnlockStatus(generators);
+        expect(gen2.isUnlocked()).toBe(true);
         expect(gen2.purchase(resources, generators)).toBe(true);
         expect(gen2.count).toBe(1);
+        expect(gen2.manualPurchases).toBe(1); // Vérifier que manualPurchases est incrémenté
         expect(resources.value).toBe(0);
         expect(generators[1].count).toBe(0);
 
@@ -140,8 +152,12 @@ describe('Generator', () => {
         const gen3 = generators[3];
         resources.value = 10;
         generators[2].count = 10;
+        generators[2].maxCount = 10;
+        gen3.updateUnlockStatus(generators);
+        expect(gen3.isUnlocked()).toBe(true);
         expect(gen3.purchase(resources, generators)).toBe(true);
         expect(gen3.count).toBe(1);
+        expect(gen3.manualPurchases).toBe(1); // Vérifier que manualPurchases est incrémenté
         expect(resources.value).toBe(0);
         expect(generators[2].count).toBe(0);
 
@@ -149,8 +165,12 @@ describe('Generator', () => {
         const gen4 = generators[4];
         resources.value = 10;
         generators[3].count = 10;
+        generators[3].maxCount = 10;
+        gen4.updateUnlockStatus(generators);
+        expect(gen4.isUnlocked()).toBe(true);
         expect(gen4.purchase(resources, generators)).toBe(true);
         expect(gen4.count).toBe(1);
+        expect(gen4.manualPurchases).toBe(1); // Vérifier que manualPurchases est incrémenté
         expect(resources.value).toBe(0);
         expect(generators[3].count).toBe(0);
     });

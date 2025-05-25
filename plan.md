@@ -4,18 +4,18 @@
 
 ## Phase 3 : Système de particules
 
-### PR #7 : Système d'observation
+### PR #7 : Collection de particules
+- Création des classes de particules (Gén. 1, 2, 3)
+- Système de stockage des particules
+- Interface de collection
+- Tests des particules
+
+### PR #8 : Système d'observation
 - Implémentation du sacrifice de générateurs
 - Système de génération aléatoire de particules
 - Logique de coûts d'observation
 - Tests du système d'observation
 - On ne peut sacrifier des générateurs de rang N que si on a au minimum un générateur de rang N+1
-
-### PR #8 : Collection de particules
-- Création des classes de particules (Gén. 1, 2, 3)
-- Système de stockage des particules
-- Interface de collection
-- Tests des particules
 
 ### PR #9 : Système de fusion
 - Implémentation de la fusion de particules

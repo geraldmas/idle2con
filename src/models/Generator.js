@@ -8,6 +8,7 @@ export default class Generator {
     this.unlockRequirement = null;
     this.unlockedFeatures = new Set();
     this.maxCount = 0; // Nouvelle propriété pour suivre le nombre maximum atteint
+    this.manualPurchases = 0; // Nouvelle propriété pour suivre les achats manuels
   }
 
   getCost() {
@@ -16,7 +17,7 @@ export default class Generator {
     const growthRate = this.rank === 1 ? 1.2 : 
                       this.rank === 2 ? 1.3 :
                       this.rank === 3 ? 1.4 : 1.5;
-    return Math.floor(baseStateCost * Math.pow(growthRate, this.count));
+    return Math.floor(baseStateCost * Math.pow(growthRate, this.manualPurchases));
   }
 
   getGeneratorCost() {
@@ -27,7 +28,7 @@ export default class Generator {
     const baseGeneratorCost = 10;
     const growthRate = this.rank === 2 ? 1.1 :
                       this.rank === 3 ? 1.2 : 1.3;
-    return Math.floor(baseGeneratorCost * Math.pow(growthRate, this.count));
+    return Math.floor(baseGeneratorCost * Math.pow(growthRate, this.manualPurchases));
   }
 
   canAfford(resources, generators) {
@@ -85,6 +86,8 @@ export default class Generator {
     if (this.count > this.maxCount) {
       this.maxCount = this.count;
     }
+    // Incrémenter le compteur d'achats manuels
+    this.manualPurchases++;
     this.checkFeatureUnlocks();
     
     return true;
