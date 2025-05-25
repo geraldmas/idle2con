@@ -49,25 +49,69 @@
         </div>
       </section>
 
-      <!-- Section Collection -->
-      <section class="game-section collection-section">
-        <h2>Collection de Particules</h2>
-        <div class="particles-panel">
-          <div class="particles-grid">
-            <!-- Les particules seront affichées ici -->
-          </div>
+      <!-- Section Observation et Fusion -->
+      <section class="game-section observation-fusion-section">
+        <h2>Observation et Fusion</h2>
+        
+        <!-- Sous-section Observation -->
+        <div class="collection-subsection">
+          <h3>Observation Quantique</h3>
+          <ParticleObservation 
+            :generators="gameState.generators"
+            @particle-observed="handleParticleObserved"
+          />
         </div>
-        <div class="fusion-panel">
-          <h3>Fusion</h3>
-          <!-- Interface de fusion à venir -->
+
+        <!-- Sous-section Fusion -->
+        <div class="collection-subsection">
+          <h3>Fusion de Particules</h3>
+          <ParticleFusion 
+            :particles="gameState.particles"
+            @particle-fused="handleParticleFused"
+          />
         </div>
       </section>
 
-      <!-- Section Prestige -->
-      <section class="game-section prestige-section">
-        <h2>Prestige Quantique</h2>
-        <div class="prestige-panel">
-          <!-- Interface de prestige à venir -->
+      <!-- Section Collection et Effets -->
+      <section class="game-section collection-effects-section">
+        <h2>Collection et Effets</h2>
+
+        <!-- Sous-section Collection -->
+        <div class="collection-subsection">
+          <h3>Collection de Particules</h3>
+          <div class="particles-grid">
+            <div v-for="particle in gameState.particles" :key="particle.id" class="particle-card">
+              <span class="particle-name">{{ particle.name }}</span>
+              <span class="particle-generation">Génération {{ particle.generation }}</span>
+              <span class="particle-type">Type: {{ particle.type }}</span>
+              <span class="particle-effect">{{ particle.getEffectDescription() }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sous-section Effets -->
+        <div class="collection-subsection">
+          <h3>Effets des Particules</h3>
+          <div class="effects-grid">
+            <div class="effect-category">
+              <h4>Production</h4>
+              <div class="effect-item">
+                <span class="effect-name">Multiplicateur dt:</span>
+                <span class="effect-value">{{ formatNumber(getTotalDtMultiplier(), 3) }}x</span>
+              </div>
+              <div class="effect-item">
+                <span class="effect-name">Bonus générateurs:</span>
+                <span class="effect-value">{{ formatNumber(getTotalGeneratorBonus(), 3) }}x</span>
+              </div>
+            </div>
+            <div class="effect-category">
+              <h4>Coûts</h4>
+              <div class="effect-item">
+                <span class="effect-name">Réduction coûts:</span>
+                <span class="effect-value">{{ formatNumber(getTotalCostReduction(), 3) }}x</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -80,17 +124,25 @@ import Resource from './models/Resource';
 import Generator from './models/Generator';
 import TickService from './services/TickService';
 import GeneratorComponent from './views/Generator.vue';
+import ParticleCollection from './components/ParticleCollection.vue';
+import ParticleObservation from './components/ParticleObservation.vue';
+import { ParticleInitializer } from './services/ParticleInitializer';
+import ParticleFusion from './components/ParticleFusion.vue';
 
 export default {
   name: 'App',
   components: {
-    Generator: GeneratorComponent
+    Generator: GeneratorComponent,
+    ParticleCollection,
+    ParticleObservation,
+    ParticleFusion
   },
   setup() {
     // État local réactif pour l'affichage
     const gameState = reactive({
       resources: new Map(),
-      generators: []
+      generators: [],
+      particles: []
     });
 
     const isDebugEnabled = ref(false);
@@ -172,23 +224,59 @@ export default {
       const initialData = initializeGameData();
       
       // Peupler l'état local réactif et le TickService avec les données initiales
-      gameState.resources = reactive(initialData.resources); // Rendre la map de ressources réactive dans l'état local
-      gameState.generators = reactive(initialData.generators); // Rendre le tableau de générateurs réactif dans l'état local
+      gameState.resources = reactive(initialData.resources);
+      gameState.generators = reactive(initialData.generators);
 
-      // Passer les collections réactives au TickService pour qu'il puisse les manipuler
+      // Passer les collections réactives au TickService
       TickService.setGameStateCollections(gameState.resources, gameState.generators);
+
+      // Initialiser les particules
+      const particleInitializer = new ParticleInitializer();
+      particleInitializer.initialize();
 
       // Démarrer le système de ticks
       TickService.start();
-      
-      // On aura peut-être besoin d'une manière pour le TickService de notifier les changements
-      // ou l'interface se mettra à jour si les objets réactifs sont modifiés directement par le service.
-
     });
 
     onUnmounted(() => {
       TickService.stop();
     });
+
+    const handleParticleFused = (newParticle) => {
+      console.log('Nouvelle particule fusionnée:', newParticle);
+      // Ici, nous pourrions mettre à jour l'état du jeu si nécessaire
+    };
+
+    const handleParticleObserved = (data) => {
+      console.log('Nouvelle particule observée:', data);
+      
+      // Consommer les générateurs du rang approprié
+      const generator = gameState.generators.find(g => g.rank === data.rank);
+      if (generator) {
+        generator.count -= data.cost;
+      }
+
+      // Ajouter la particule à la collection
+      gameState.particles.push(data.particle);
+    };
+
+    const getTotalDtMultiplier = () => {
+      return gameState.particles.reduce((total, particle) => {
+        return total * (1 + particle.getDtMultiplier());
+      }, 1);
+    };
+
+    const getTotalGeneratorBonus = () => {
+      return gameState.particles.reduce((total, particle) => {
+        return total * (1 + particle.getGeneratorBonus());
+      }, 1);
+    };
+
+    const getTotalCostReduction = () => {
+      return gameState.particles.reduce((total, particle) => {
+        return total * (1 - particle.getCostReduction());
+      }, 1);
+    };
 
     // Retourner l'état local réactif pour l'affichage
     return {
@@ -197,7 +285,12 @@ export default {
       formatNumber,
       toggleDebug,
       buyGenerator,
-      TickService // Exposer le service si nécessaire
+      TickService,
+      handleParticleFused,
+      handleParticleObserved,
+      getTotalDtMultiplier,
+      getTotalGeneratorBonus,
+      getTotalCostReduction
     };
   }
 }
@@ -246,7 +339,7 @@ h3 {
 
 .game-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -318,9 +411,43 @@ h3 {
 
 .particles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
   margin-top: 15px;
+}
+
+.particle-card {
+  background: #2a2a4a;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.particle-name {
+  color: #00ff9d;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.particle-generation {
+  color: #ff9d00;
+  font-size: 0.9em;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.particle-type {
+  color: #ff9d00;
+  font-size: 0.9em;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.particle-effect {
+  color: #a0a0a0;
+  font-size: 0.9em;
+  display: block;
 }
 
 .prestige-panel {
@@ -328,5 +455,88 @@ h3 {
   border-radius: 4px;
   padding: 15px;
   border: 1px solid #3a3a5a;
+}
+
+.collection-section {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.collection-subsection {
+  background: #1a1a2e;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #3a3a5a;
+}
+
+.collection-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.collection-subsection h3 {
+  color: #00ff9d;
+  margin-bottom: 15px;
+  font-size: 1.4em;
+  border-bottom: 1px solid #3a3a5a;
+  padding-bottom: 10px;
+}
+
+.effects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.effect-category {
+  background: #2a2a4a;
+  border-radius: 4px;
+  padding: 15px;
+}
+
+.effect-category h4 {
+  color: #00ff9d;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.effect-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.effect-name {
+  color: #a0a0a0;
+}
+
+.effect-value {
+  color: #00ff9d;
+  font-weight: bold;
+}
+
+.fusion-section {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.observation-fusion-section {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.collection-effects-section {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 </style> 
