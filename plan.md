@@ -3,12 +3,6 @@
 
 ## Phase 4 : Système de prestige
 
-### PR #10 : Système de prestige de base
-- Implémentation de la réinitialisation
-- Conservation des particules fusionnées
-- Système de déblocage des antiparticules
-- Tests du prestige
-
 ### PR #11 : Système d'améliorations
 - Implémentation du facteur d'échelle
 - Système de points d'observation
@@ -104,3 +98,11 @@
 - Logique de génération des bosons ✅
 - Interface de fusion ✅
 - Tests du système de fusion ✅
+
+## Phase 4 : Système de prestige
+
+### PR #10 : Système de prestige de base ✅
+- Implémentation de la réinitialisation ✅
+- Conservation des particules fusionnées ✅
+- Système de déblocage des antiparticules ✅
+- Tests du prestige ✅
