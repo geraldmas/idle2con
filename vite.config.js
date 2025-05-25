@@ -16,9 +16,9 @@ export default defineConfig({
       },
       output: {
         manualChunks: undefined,
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]'
       }
     }
   },
@@ -30,5 +30,10 @@ export default defineConfig({
   define: {
     __VUE_OPTIONS_API__: true,
     __VUE_PROD_DEVTOOLS__: false
+  },
+  server: {
+    port: 3000,
+    strictPort: true,
+    host: true
   }
 }); 
