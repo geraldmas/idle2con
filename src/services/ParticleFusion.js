@@ -8,7 +8,7 @@ export class ParticleFusion {
     }
 
     canFuseParticles(type) {
-        const particles = this.storage.getParticlesByType(type);
+        const particles = this.storage.getParticlesByType(type) || [];
         return particles.length >= 3;
     }
 
@@ -31,16 +31,15 @@ export class ParticleFusion {
     }
 
     fuseParticles(type) {
+        const ResultClass = this.getFusionResult(type);
+        if (!ResultClass) {
+            throw new Error('Fusion impossible pour ce type de particule');
+        }
         if (!this.canFuseParticles(type)) {
             throw new Error('Pas assez de particules pour la fusion');
         }
 
-        const particles = this.storage.getParticlesByType(type);
-        const ResultClass = this.getFusionResult(type);
-
-        if (!ResultClass) {
-            throw new Error('Fusion impossible pour ce type de particule');
-        }
+        const particles = this.storage.getParticlesByType(type) || [];
 
         // Supprimer les 3 particules utilisées pour la fusion
         const particlesToRemove = particles.slice(0, 3);

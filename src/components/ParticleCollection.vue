@@ -2,6 +2,21 @@
   <div class="particle-collection">
     <h2>Collection de Particules</h2>
     
+    <div class="total-effects-summary">
+      <div class="effect-category">
+        <span class="label">Multiplicateur dt total:</span>
+        <span class="value">{{ formatGlobalEffect('dt') }}</span>
+      </div>
+      <div class="effect-category">
+        <span class="label">Bonus générateurs total:</span>
+        <span class="value">{{ formatGlobalEffect('generator') }}</span>
+      </div>
+      <div class="effect-category">
+        <span class="label">Réduction coûts totale:</span>
+        <span class="value">{{ formatGlobalEffect('cost') }}</span>
+      </div>
+    </div>
+
     <div class="generation-tabs">
       <button 
         v-for="gen in 3" 
@@ -30,6 +45,10 @@
           <div class="effect">
             <span class="label">Effet:</span>
             <span class="value">{{ formatEffect(particle.firstParticle) }}</span>
+          </div>
+          <div class="total-effect" v-if="particle.count > 1">
+            <span class="label">Effet total:</span>
+            <span class="value">{{ formatTotalEffect(particle) }}</span>
           </div>
         </div>
 
@@ -108,6 +127,40 @@ export default {
       return particle.getEffectDescription();
     };
 
+    const formatTotalEffect = (particle) => {
+      if (!particle || !particle.firstParticle) return '';
+      const baseEffect = particle.firstParticle.getEffectValue();
+      const totalEffect = Math.pow(1 + baseEffect, particle.count) - 1;
+      return `${(totalEffect * 100).toFixed(1)}%`;
+    };
+
+    const calculateGlobalEffect = (effectType) => {
+      let totalEffect = 1;
+      props.particles.forEach(particle => {
+        let effect = 0;
+        switch(effectType) {
+          case 'dt':
+            effect = particle.getDtMultiplier();
+            break;
+          case 'generator':
+            effect = particle.getGeneratorBonus();
+            break;
+          case 'cost':
+            effect = particle.getCostReduction();
+            break;
+        }
+        if (effect > 0) {
+          totalEffect *= (1 + effect);
+        }
+      });
+      return totalEffect - 1;
+    };
+
+    const formatGlobalEffect = (effectType) => {
+      const effect = calculateGlobalEffect(effectType);
+      return `${(effect * 100).toFixed(1)}%`;
+    };
+
     const prepareFusion = (type) => {
       fusionParticleType.value = type;
       const particleGroup = groupedFilteredParticles.value.find(p => p.type === type);
@@ -139,6 +192,8 @@ export default {
       fusionError,
       canFuse,
       formatEffect,
+      formatTotalEffect,
+      formatGlobalEffect,
       prepareFusion,
       confirmFusion
     };
@@ -152,6 +207,31 @@ export default {
   background: #1a1a2e;
   color: #e6e6e6;
   border-radius: 8px;
+}
+
+.total-effects-summary {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.effect-category {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
+  font-size: 1em;
+}
+
+.effect-category .label {
+  color: #8b8b8b;
+}
+
+.effect-category .value {
+  color: #00ff9d;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: bold;
 }
 
 .generation-tabs {
@@ -340,6 +420,14 @@ export default {
 
 .cancel-button:hover {
   background: #d13b54;
+}
+
+.total-effect {
+  display: flex;
+  justify-content: space-between;
+  margin: 3px 0;
+  font-size: 0.9em;
+  color: #00ff9d;
 }
 
 @media (max-width: 480px) {

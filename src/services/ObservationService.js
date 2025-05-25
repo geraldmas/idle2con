@@ -20,8 +20,8 @@ export class ObservationService {
         return Math.floor(this.baseCost * Math.pow(this.costMultiplier, generatorRank - 1));
     }
 
-    observe(generatorRank) {
-        if (!this.canObserve(generatorRank, this.getObservationCost(generatorRank))) {
+    observe(generatorRank, generatorCount = this.getObservationCost(generatorRank)) {
+        if (!this.canObserve(generatorRank, generatorCount)) {
             throw new Error(`Pas assez de générateurs de rang ${generatorRank} pour observer`);
         }
 

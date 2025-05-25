@@ -140,6 +140,18 @@ class TickService {
       });
     }
   }
+
+  addResource(resource) {
+    this.resources.set(resource.name, resource);
+  }
+
+  getResources() {
+    return Array.from(this.resources.values());
+  }
+
+  setTickRate(rate) {
+    this.tickRate = rate;
+  }
 }
 
 export default new TickService(); 

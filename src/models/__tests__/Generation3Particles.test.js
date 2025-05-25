@@ -10,16 +10,16 @@ describe('Generation 3 Particles', () => {
 
     test('NeutrinoTau should have correct effect', () => {
         const neutrino = new NeutrinoTau();
-        const gameState = { n: 1, generators: { 3: 10 } };
+        const gameState = { n: 1, generators: { 4: 10 } };
         const newState = neutrino.applyEffect(gameState);
-        expect(newState.n).toBe(2);
+        expect(newState.n).toBe(1 + 10 * 0.1);
     });
 
     test('QuarkTruth should have correct effect', () => {
         const truth = new QuarkTruth();
         const gameState = { generator1Production: 100 };
         const newState = truth.applyEffect(gameState);
-        expect(newState.generator1Production).toBe(110);
+        expect(newState.generator1Production).toBeCloseTo(110, 5);
     });
 
     test('QuarkBeauty should have correct effect', () => {

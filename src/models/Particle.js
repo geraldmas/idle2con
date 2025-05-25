@@ -4,8 +4,13 @@ export class Particle {
         this.generation = generation;
         this.type = type;
         this.effect = effect;
-        this.id = crypto.randomUUID();
+        this.id = this.generateId();
         this.createdAt = new Date();
+    }
+
+    generateId() {
+        // Utiliser une fonction plus simple pour les tests
+        return Math.random().toString(36).substring(2, 15);
     }
 
     getEffectValue() {

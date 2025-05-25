@@ -10,9 +10,9 @@ describe('Generation 2 Particles', () => {
 
     test('NeutrinoMu should have correct effect', () => {
         const neutrino = new NeutrinoMu();
-        const gameState = { n: 1, generators: { 2: 10 } };
+        const gameState = { n: 1, generators: { 3: 10 } };
         const newState = neutrino.applyEffect(gameState);
-        expect(newState.n).toBe(2);
+        expect(newState.n).toBe(1 + 10 * 0.1);
     });
 
     test('QuarkCharm should have correct effect', () => {

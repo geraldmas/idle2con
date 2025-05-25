@@ -224,65 +224,16 @@ export default {
     // Nouvelle méthode pour gérer la fusion des particules
     const handleParticleFusion = (data) => {
       console.log('Tentative de fusion de particules de type:', data.type);
-      const typeToFuse = data.type;
-      const particlesToFuse = gameState.particles.filter(p => p.type === typeToFuse);
-
-      if (particlesToFuse.length >= 3) {
-        // Retirer 3 particules du type à fusionner
-        let removedCount = 0;
-        gameState.particles = gameState.particles.filter(particle => {
-          if (particle.type === typeToFuse && removedCount < 3) {
-            removedCount++;
-            return false; // Exclure cette particule
-          }
-          return true; // Garder cette particule
-        });
-
-        // Créer la particule fusionnée (logique basée sur specification.md)
-        // Il faudra ici implémenter la logique pour déterminer quelle particule est créée
-        // en fonction du type de celles qui sont fusionnées.
-        // Pour l'instant, ajoutons un placeholder ou une logique simple.
-        // Selon specification.md: 3 particules identiques -> 1 de génération supérieure.
-        // Il faudrait un service ou une méthode pour cela.
-
-        // Exemple simplifié (assumant que le type fusionné détermine le nouveau type et génération):
-        const firstParticleToFuse = particlesToFuse[0]; // Prendre une particule pour obtenir sa génération actuelle
-        let newParticle = null;
-
-        // Cette logique de création de particule fusionnée devrait être dans un service (ex: ParticleFusionService)
-        // En attendant, une implémentation simple basée sur la génération:
-        if (firstParticleToFuse) {
-           const newGeneration = firstParticleToFuse.generation + 1;
-           // Il faudrait ici une logique pour créer la particule correcte de la nouvelle génération
-           // based on the specific type that was fused. This is a simplified placeholder.
-           // Need access to the Particle model and potentially a ParticleFactory or similar.
-
-           // Pour le moment, ajoutons une particule générique de la nouvelle génération pour test
-           // Idéalement, on appellerait un service: ParticleFusionService.createFusedParticle(typeToFuse)
-           // En attendant, simulation:
-           console.warn("La logique de création de particule fusionnée doit être implémentée correctement.");
-           // Créer une instance de particule de la génération suivante (simplifié)
-           // Cela nécessite d'avoir accès à la logique de création de particules ici ou via un service
-           // Pour que cet exemple compile, j'ajoute un placeholder d'objet particule
-            newParticle = { // Placeholder object, replace with actual particle instance creation
-                id: Date.now(), // Simple ID
-                name: `Fused Particle Gen ${newGeneration}`, // Placeholder name
-                type: `fusedGen${newGeneration}`, // Placeholder type
-                generation: newGeneration,
-                getEffectDescription: () => `Placeholder Effect Gen ${newGeneration}` // Placeholder method
-            };
-
-            if (newParticle) {
-                 gameState.particles.push(newParticle);
-                 console.log('Particule fusionnée ajoutée:', newParticle);
-                 // Optionnel: émettre un événement si d'autres composants doivent réagir à la fusion
-                 // emit('particle-fused-successfully', newParticle);
-            }
+      const fusionService = new ParticleFusion();
+      
+      try {
+        const newParticle = fusionService.fuseParticles(data.type);
+        if (newParticle) {
+          gameState.particles.push(newParticle);
+          console.log('Particule fusionnée ajoutée:', newParticle);
         }
-
-      } else {
-        console.warn('Pas assez de particules pour fusionner de type:', typeToFuse);
-        // Afficher un message à l'utilisateur si possible
+      } catch (error) {
+        console.error('Erreur lors de la fusion:', error);
       }
     };
 

@@ -40,7 +40,7 @@ describe('ObservationService', () => {
 
     describe('observe', () => {
         test('should throw error when not enough generators', () => {
-            expect(() => service.observe(1)).toThrow('Pas assez de générateurs');
+            expect(() => service.observe(1, 0)).toThrow('Pas assez de générateurs de rang 1 pour observer');
         });
 
         test('should generate and store a particle when successful', () => {

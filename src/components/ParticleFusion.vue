@@ -4,6 +4,20 @@
     
     <div class="fusion-info">
       <p>Fusionnez 3 particules identiques pour obtenir une particule de génération supérieure.</p>
+      <div class="effect-preview" v-if="selectedParticles.length === 3">
+        <h3>Effet de la fusion</h3>
+        <div class="effect-details">
+          <div class="current-effect">
+            <span class="label">Effet actuel:</span>
+            <span class="value">{{ formatTotalEffect(selectedParticles[0]) }}</span>
+          </div>
+          <div class="fusion-arrow">→</div>
+          <div class="future-effect">
+            <span class="label">Effet après fusion:</span>
+            <span class="value">{{ formatFusionEffect(selectedParticles[0]) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="fusion-interface">
@@ -12,13 +26,22 @@
           v-for="particle in availableParticles" 
           :key="particle.id"
           class="particle-card"
-          :class="{ 'selected': selectedParticles.includes(particle) }"
+          :class="{ 
+            'selected': selectedParticles.includes(particle),
+            'fusion-ready': canFuse && selectedParticles.length === 3
+          }"
           @click="toggleParticleSelection(particle)"
         >
           <span class="particle-name">{{ particle.name }}</span>
           <span class="particle-generation">Génération {{ particle.generation }}</span>
-          <span class="particle-effect">{{ particle.getEffectDescription() }}</span>
-          <span class="particle-count">x{{ getParticleCount(particle) }}</span>
+          <div class="particle-effect">
+            <span class="effect-label">Effet:</span>
+            <span class="effect-value">{{ particle.getEffectDescription() }}</span>
+          </div>
+          <div class="particle-count">
+            <span class="count-label">Disponibles:</span>
+            <span class="count-value">x{{ getParticleCount(particle) }}</span>
+          </div>
         </div>
       </div>
 
@@ -27,7 +50,10 @@
           <h3>Particules sélectionnées ({{ selectedParticles.length }}/3)</h3>
           <div class="selected-list">
             <div v-for="(particle, index) in selectedParticles" :key="index" class="selected-particle">
-              {{ particle.name }}
+              <div class="particle-info">
+                <span class="name">{{ particle.name }}</span>
+                <span class="effect">{{ particle.getEffectDescription() }}</span>
+              </div>
               <button @click="removeParticle(index)" class="remove-button">×</button>
             </div>
           </div>
@@ -36,19 +62,22 @@
         <button 
           @click="fuseParticles"
           :disabled="!canFuse"
-          :class="{ 'disabled': !canFuse }"
+          :class="{ 'disabled': !canFuse, 'ready': canFuse }"
         >
-          Fusionner
+          {{ canFuse ? 'Fusionner' : 'Sélectionnez 3 particules' }}
         </button>
       </div>
     </div>
 
     <div v-if="lastFusion" class="fusion-result">
       <h3>Dernière Fusion</h3>
-      <div class="particle-card">
+      <div class="particle-card fusion-animation">
         <span class="particle-name">{{ lastFusion.name }}</span>
         <span class="particle-generation">Génération {{ lastFusion.generation }}</span>
-        <span class="particle-effect">{{ lastFusion.getEffectDescription() }}</span>
+        <div class="particle-effect">
+          <span class="effect-label">Nouvel effet:</span>
+          <span class="effect-value">{{ lastFusion.getEffectDescription() }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -113,6 +142,22 @@ export default {
       }
     };
 
+    const formatTotalEffect = (particle) => {
+      if (!particle) return '0%';
+      const baseEffect = particle.getEffectValue();
+      const totalEffect = Math.pow(1 + baseEffect, 3) - 1;
+      return `${(totalEffect * 100).toFixed(1)}%`;
+    };
+
+    const formatFusionEffect = (particle) => {
+      if (!particle) return '0%';
+      const fusionService = new ParticleFusion();
+      const ResultClass = fusionService.getFusionResult(particle.type);
+      if (!ResultClass) return 'Fusion impossible';
+      const newParticle = new ResultClass();
+      return `${(newParticle.getEffectValue() * 100).toFixed(1)}%`;
+    };
+
     return {
       selectedParticles,
       lastFusion,
@@ -121,7 +166,9 @@ export default {
       canFuse,
       toggleParticleSelection,
       removeParticle,
-      fuseParticles
+      fuseParticles,
+      formatTotalEffect,
+      formatFusionEffect
     };
   }
 };
@@ -169,6 +216,11 @@ export default {
 .particle-card.selected {
   border-color: #00ff9d;
   background: #1a2e2a;
+}
+
+.particle-card.fusion-ready {
+  border-color: #00ff9d;
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
 }
 
 .particle-name {
@@ -262,5 +314,98 @@ button.disabled {
   background: #1a1a2e;
   border-radius: 6px;
   border: 1px solid #3a3a5a;
+}
+
+.effect-preview {
+  background: #1a1a2e;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.effect-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.current-effect, .future-effect {
+  flex: 1;
+  text-align: center;
+}
+
+.fusion-arrow {
+  color: #00ff9d;
+  font-size: 1.5em;
+  margin: 0 20px;
+}
+
+.effect-label, .count-label {
+  color: #8b8b8b;
+  font-size: 0.9em;
+  margin-right: 5px;
+}
+
+.effect-value, .count-value {
+  color: #00ff9d;
+  font-weight: bold;
+}
+
+.particle-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.particle-info .name {
+  color: #00ff9d;
+  font-weight: bold;
+}
+
+.particle-info .effect {
+  color: #8b8b8b;
+  font-size: 0.9em;
+}
+
+.fusion-animation {
+  animation: fusionPulse 1s ease-in-out;
+}
+
+@keyframes fusionPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 10px rgba(0, 255, 157, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 255, 157, 0);
+  }
+}
+
+.fusion-ready {
+  border-color: #00ff9d;
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+}
+
+button.ready {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 255, 157, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 157, 0);
+  }
 }
 </style> 
