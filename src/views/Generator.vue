@@ -8,7 +8,7 @@
     <div class="generator-info">
       <div class="production">
         <span class="label">Production:</span>
-        <span class="value">+{{ formatNumber(production) }}/s</span>
+        <span class="value">+{{ formatNumber(production * milestoneBonus) }}/s</span>
       </div>
       <div class="cost">
         <span class="label">Coût:</span>
@@ -16,6 +16,20 @@
           {{ formatNumber(cost) }} États
           <span v-if="generatorCost > 0">+ {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span>
         </span>
+      </div>
+      <div class="milestones" v-if="isUnlocked">
+        <div class="milestone-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: `${milestoneProgress * 100}%` }"></div>
+          </div>
+          <span class="milestone-text">
+            Prochain palier à {{ formatNumber(nextMilestone) }} (x{{ formatNumber(milestoneBonus) }} production)
+          </span>
+        </div>
+        <div class="reached-milestones" v-if="reachedMilestones.length > 0">
+          <span class="label">Paliers atteints:</span>
+          <span class="value">{{ reachedMilestones.join(', ') }}</span>
+        </div>
       </div>
     </div>
 
@@ -68,6 +82,22 @@ export default {
     canAfford: {
       type: Boolean,
       default: false
+    },
+    milestoneProgress: {
+      type: Number,
+      default: 0
+    },
+    nextMilestone: {
+      type: Number,
+      default: 0
+    },
+    milestoneBonus: {
+      type: Number,
+      default: 1
+    },
+    reachedMilestones: {
+      type: Array,
+      default: () => []
     }
   },
   emits: ['buy'],
@@ -87,7 +117,7 @@ export default {
       if (num >= 1000) {
         return (num / 1000).toFixed(2) + 'K';
       }
-      return Math.floor(num); // Afficher uniquement la partie entière
+      return num.toFixed(2);
     };
 
     const buyGenerator = () => {
@@ -191,5 +221,44 @@ export default {
 
 .buy-button:disabled span {
   color: #e6e6e6;
+}
+
+.milestones {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #3a3a5a;
+}
+
+.milestone-progress {
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #2a2a4a;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #00ff9d;
+  transition: width 0.3s ease;
+}
+
+.milestone-text {
+  font-size: 0.9em;
+  color: #00ff9d;
+}
+
+.reached-milestones {
+  font-size: 0.9em;
+  color: #ff9d00;
+}
+
+.reached-milestones .label {
+  margin-right: 5px;
 }
 </style> 

@@ -7,6 +7,7 @@ export default class Generator {
     this._isUnlocked = rank === 1; // Seul le générateur 1 est débloqué au départ
     this.unlockRequirement = null;
     this.unlockedFeatures = new Set();
+    this.maxCount = 0; // Nouvelle propriété pour suivre le nombre maximum atteint
   }
 
   getCost() {
@@ -68,30 +69,22 @@ export default class Generator {
 
     // Déduire le coût en générateurs précédents si applicable
     if (this.rank > 1) {
-      // Utiliser l'index correct pour le générateur précédent
       const previousGeneratorIndex = this.rank - 2;
       if (previousGeneratorIndex >= 0 && previousGeneratorIndex < generators.length) {
           const previousGenerator = generators[previousGeneratorIndex];
           const costToDeduct = this.getGeneratorCost();
           
-          // Logs détaillés avant déduction
-          console.log(`Purchase (Gen ${this.rank}): État avant déduction:`);
-          console.log(`- Générateur ${previousGenerator.rank}: count=${previousGenerator.count}, coût à déduire=${costToDeduct}`);
-          console.log(`- Générateur ${this.rank}: count=${this.count}`);
-          
-          // Modifier le compteur du générateur précédent
           previousGenerator.count -= costToDeduct;
-
-          // Logs détaillés après déduction
-          console.log(`Purchase (Gen ${this.rank}): État après déduction:`);
-          console.log(`- Générateur ${previousGenerator.rank}: count=${previousGenerator.count}`);
-          console.log(`- Générateur ${this.rank}: count=${this.count}`);
       } else {
-          return false; // Annuler l'achat si l'index est invalide
+          return false;
       }
     }
     
     this.count++;
+    // Mettre à jour le nombre maximum si nécessaire
+    if (this.count > this.maxCount) {
+      this.maxCount = this.count;
+    }
     this.checkFeatureUnlocks();
     
     return true;
@@ -111,7 +104,7 @@ export default class Generator {
 
     let bonusMultiplier = 1;
     milestones.forEach(milestone => {
-        if (this.count >= milestone) {
+        if (this.maxCount >= milestone) {
             // Chaque palier atteint double la production
             bonusMultiplier *= 2;
         }
@@ -176,5 +169,41 @@ export default class Generator {
   getMilestoneBonus(milestone) {
     const reachedMilestone = this.getPowerMilestone(milestone);
     return reachedMilestone > 0 ? Math.pow(2, reachedMilestone / milestone) : 1;
+  }
+
+  getPowerMilestones() {
+    // Paliers par puissance de 10 : 10, 100, 1000, ...
+    const milestones = [];
+    let currentMilestone = 10;
+    const maxMilestone = 10000000000; // Limite à 10^10
+
+    while (currentMilestone <= maxMilestone) {
+      milestones.push(currentMilestone);
+      currentMilestone *= 10;
+    }
+
+    return milestones;
+  }
+
+  getReachedMilestones() {
+    // Utiliser maxCount au lieu de count pour déterminer les paliers atteints
+    return this.getPowerMilestones().filter(milestone => this.maxCount >= milestone);
+  }
+
+  getNextMilestone() {
+    // Utiliser maxCount pour déterminer le prochain palier
+    return this.getPowerMilestones().find(milestone => this.maxCount < milestone);
+  }
+
+  getMilestoneProgress() {
+    const nextMilestone = this.getNextMilestone();
+    if (!nextMilestone) return 1; // Tous les paliers sont atteints
+    // Utiliser maxCount pour la progression
+    return this.maxCount / nextMilestone;
+  }
+
+  getMilestoneBonus() {
+    const reachedMilestones = this.getReachedMilestones();
+    return Math.pow(2, reachedMilestones.length); // Double la production pour chaque palier atteint
   }
 } 

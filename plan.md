@@ -1,26 +1,6 @@
 # Plan d'implémentation - Quantum Factory
 
-## Phase 1 : Structure de base et ressources fondamentales ✅
 
-### PR #3 : Interface utilisateur de base ✅
-- Création du layout principal (3 sections) ✅
-- Implémentation des composants de base (boutons, panneaux) ✅
-- Mise en place du style scientifique ✅
-- Tests d'intégration UI ✅
-
-## Phase 2 : Système de générateurs
-
-### PR #5 : Système de progression des générateurs ✅
-- Implémentation des Générateurs 2, 3 et 4 ✅
-- Système de déblocage conditionnel ✅
-- Logique de coûts et de croissance ✅
-- Tests d'intégration des générateurs ✅
-
-### PR #6 : Système de paliers de puissance
-- Implémentation des paliers (10, 25, 50, 100...)
-- Système de bonus de production
-- Interface de visualisation des paliers
-- Tests des paliers
 
 ## Phase 3 : Système de particules
 
@@ -29,6 +9,7 @@
 - Système de génération aléatoire de particules
 - Logique de coûts d'observation
 - Tests du système d'observation
+- On ne peut sacrifier des générateurs de rang N que si on a au minimum un générateur de rang N+1
 
 ### PR #8 : Collection de particules
 - Création des classes de particules (Gén. 1, 2, 3)
@@ -84,6 +65,8 @@
 
 ## Tâches accomplies
 
+## Phase 1 : Structure de base et ressources fondamentales ✅
+
 ### PR #1 : Mise en place de l'architecture de base ✅
 - Création de la structure MVC ✅
 - Implémentation du système de sauvegarde (localStorage) ✅
@@ -102,8 +85,22 @@
 - Mise en place du style scientifique ✅
 - Tests d'intégration UI ✅
 
+## Phase 2 : Système de générateurs
+
 ### PR #4 : Implémentation des générateurs de base ✅
 - Création de la classe `Generator` ✅
 - Implémentation du Générateur 1 avec sa logique de coût ✅
 - Système de croissance exponentielle ✅
 - Tests unitaires des générateurs ✅
+
+### PR #5 : Système de progression des générateurs ✅
+- Implémentation des Générateurs 2, 3 et 4 ✅
+- Système de déblocage conditionnel ✅
+- Logique de coûts et de croissance ✅
+- Tests d'intégration des générateurs ✅
+
+### PR #6 : Système de paliers de puissance ✅
+- Implémentation des paliers (10, 100, 1000...) ✅
+- Système de bonus de production ✅
+- Interface de visualisation des paliers ✅
+- Tests des paliers ✅

@@ -215,27 +215,148 @@ describe('Generator', () => {
         const gen1 = generators[1]; // Base production 1/16
 
         gen1.count = 0;
+        gen1.maxCount = 0; // Assurer que maxCount est également à jour pour les tests
         expect(gen1.getProduction()).toBe(0);
 
         gen1.count = 1;
+        gen1.maxCount = 1;
         expect(gen1.getProduction()).toBe(1/16);
 
-        gen1.count = 10; // First milestone
-        expect(gen1.getProduction()).toBe((10 * 1/16) * 2); // 10 * base * 2
+        gen1.count = 10; // First milestone (10)
+        gen1.maxCount = 10;
+        expect(gen1.getProduction()).toBe((10 * 1/16) * 2); // 10 * base * 2^1
 
-        gen1.count = 25; // Second milestone
-        expect(gen1.getProduction()).toBe((25 * 1/16) * 4); // 25 * base * 4 (bonus * 2 pour chaque palier)
+        gen1.count = 99;
+        gen1.maxCount = 99;
+        expect(gen1.getProduction()).toBe((99 * 1/16) * 2); // Toujours bonus x2
 
-        gen1.count = 50; // Third milestone
-        expect(gen1.getProduction()).toBe((50 * 1/16) * 8); // 50 * base * 8
+        gen1.count = 100; // Second milestone (100)
+        gen1.maxCount = 100;
+        expect(gen1.getProduction()).toBe((100 * 1/16) * 4); // 100 * base * 2^2
 
-        gen1.count = 100; // Fourth milestone
-        expect(gen1.getProduction()).toBe((100 * 1/16) * 16); // 100 * base * 16
+        gen1.count = 500; // Entre deux paliers (100 et 1000)
+        gen1.maxCount = 500;
+        expect(gen1.getProduction()).toBe((500 * 1/16) * 4); // Toujours bonus x4
 
-        gen1.count = 200; // Fifth milestone (first of the +100 series)
-        expect(gen1.getProduction()).toBe((200 * 1/16) * 32); // 200 * base * 32
+        gen1.count = 1000; // Third milestone (1000)
+        gen1.maxCount = 1000;
+        expect(gen1.getProduction()).toBe((1000 * 1/16) * 8); // 1000 * base * 2^3
 
-        gen1.count = 1000; // Last milestone in the range
-        expect(gen1.getProduction()).toBe((1000 * 1/16) * Math.pow(2, 10)); // 1000 * base * 2^10
+        gen1.count = 10000; // Fourth milestone (10000)
+        gen1.maxCount = 10000;
+        expect(gen1.getProduction()).toBe((10000 * 1/16) * 16); // 10000 * base * 2^4
+    });
+
+    test('getPowerMilestones returns correct milestone values', () => {
+        const gen1 = generators[1];
+        const milestones = gen1.getPowerMilestones();
+        expect(milestones).toEqual([10, 25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]);
+    });
+
+    test('getReachedMilestones returns correct reached milestones', () => {
+        const gen1 = generators[1];
+        
+        gen1.count = 0;
+        expect(gen1.getReachedMilestones()).toEqual([]);
+
+        gen1.count = 15;
+        expect(gen1.getReachedMilestones()).toEqual([10]);
+
+        gen1.count = 30;
+        expect(gen1.getReachedMilestones()).toEqual([10, 25]);
+
+        gen1.count = 1000;
+        expect(gen1.getReachedMilestones()).toEqual([10, 25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]);
+    });
+
+    test('getNextMilestone returns correct next milestone', () => {
+        const gen1 = generators[1];
+        
+        gen1.count = 0;
+        expect(gen1.getNextMilestone()).toBe(10);
+
+        gen1.count = 15;
+        expect(gen1.getNextMilestone()).toBe(25);
+
+        gen1.count = 1000;
+        expect(gen1.getNextMilestone()).toBeUndefined();
+    });
+
+    test('getMilestoneProgress returns correct progress', () => {
+        const gen1 = generators[1];
+        
+        gen1.count = 0;
+        expect(gen1.getMilestoneProgress()).toBe(0);
+
+        gen1.count = 5;
+        expect(gen1.getMilestoneProgress()).toBe(0.5);
+
+        gen1.count = 10;
+        expect(gen1.getMilestoneProgress()).toBe(1);
+
+        gen1.count = 1000;
+        expect(gen1.getMilestoneProgress()).toBe(1);
+    });
+
+    test('getMilestoneBonus returns correct bonus multiplier', () => {
+        const gen1 = generators[1];
+        
+        gen1.count = 0;
+        expect(gen1.getMilestoneBonus()).toBe(1);
+
+        gen1.count = 15;
+        expect(gen1.getMilestoneBonus()).toBe(2);
+
+        gen1.count = 30;
+        expect(gen1.getMilestoneBonus()).toBe(4);
+
+        gen1.count = 1000;
+        expect(gen1.getMilestoneBonus()).toBe(Math.pow(2, 13));
+    });
+
+    test('milestones are preserved when generator count decreases', () => {
+        const gen1 = generators[1];
+        
+        // Atteindre le premier palier
+        gen1.count = 10;
+        expect(gen1.getReachedMilestones()).toEqual([10]);
+        expect(gen1.getMilestoneBonus()).toBe(2);
+
+        // Diminuer le nombre de générateurs
+        gen1.count = 5;
+        // Les paliers devraient être conservés
+        expect(gen1.getReachedMilestones()).toEqual([10]);
+        expect(gen1.getMilestoneBonus()).toBe(2);
+
+        // Atteindre le deuxième palier
+        gen1.count = 25;
+        expect(gen1.getReachedMilestones()).toEqual([10, 25]);
+        expect(gen1.getMilestoneBonus()).toBe(4);
+
+        // Diminuer à nouveau
+        gen1.count = 15;
+        // Les deux paliers devraient être conservés
+        expect(gen1.getReachedMilestones()).toEqual([10, 25]);
+        expect(gen1.getMilestoneBonus()).toBe(4);
+    });
+
+    test('maxCount is correctly updated during purchases', () => {
+        const gen1 = generators[1];
+        
+        // Acheter des générateurs
+        gen1.count = 10;
+        expect(gen1.maxCount).toBe(10);
+
+        // Diminuer le nombre
+        gen1.count = 5;
+        expect(gen1.maxCount).toBe(10);
+
+        // Augmenter à nouveau
+        gen1.count = 15;
+        expect(gen1.maxCount).toBe(15);
+
+        // Diminuer encore
+        gen1.count = 8;
+        expect(gen1.maxCount).toBe(15);
     });
 }); 

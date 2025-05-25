@@ -34,12 +34,16 @@
             :key="generator.name"
             :name="generator.name"
             :count="generator.count"
-            :production="generator.getProduction()"
+            :production="generator.getProduction() / generator.getMilestoneBonus()"
             :cost="generator.getCost()"
             :generator-cost="generator.getGeneratorCost()"
             :is-unlocked="generator.isUnlocked()"
             :unlock-requirement="generator.rank > 1 ? '10 générateurs précédents' : ''"
             :can-afford="generator.canAfford(gameState.resources.get('États'), gameState.generators)"
+            :milestone-progress="generator.getMilestoneProgress()"
+            :next-milestone="generator.getNextMilestone()"
+            :milestone-bonus="generator.getMilestoneBonus()"
+            :reached-milestones="generator.getReachedMilestones()"
             @buy="buyGenerator(index)"
           />
         </div>
