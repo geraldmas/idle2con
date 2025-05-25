@@ -867,9 +867,20 @@ function updateUI() {
 
     // Calculate and Display Rapidity & Ship Speed
     const rapidityElement = document.getElementById('current-rapidity');
-    // Rapidity (φ): 1 JuL = 10^-9 units of Rapidity.
-    // This is a thematic calculation based on the game's lore/concept.
-    let currentRapidity = gameData.baseCurrency.div(new Decimal("1e9"));
+    
+    // Nouvelle formule de rapidité basée sur le logarithme naturel des JuL
+    // Cette formule rend la progression vers la vitesse de la lumière plus réaliste :
+    // - Les premiers JuL donnent une progression rapide
+    // - Plus on accumule de JuL, plus il devient difficile d'augmenter la rapidité
+    // - Le logarithme crée une asymptote naturelle qui empêche d'atteindre la vitesse de la lumière trop facilement
+    // 
+    // Formule : φ = ln(JuL) * facteur_de_difficulté
+    // où :
+    // - φ est la rapidité (utilisée pour calculer v/c via tanh(φ))
+    // - ln(JuL) est le logarithme naturel des JuL accumulés
+    // - facteur_de_difficulté contrôle la vitesse de progression (0.1 par défaut)
+    const FACTEUR_DIFFICULTE = new Decimal("0.1"); // Ajuster ce facteur selon l'équilibrage souhaité
+    let currentRapidity = gameData.baseCurrency.log().mul(FACTEUR_DIFFICULTE);
 
     if (rapidityElement) {
         rapidityElement.textContent = formatNumber(currentRapidity);
@@ -1101,6 +1112,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         toggleFreePurchasesButton.style.backgroundColor = gameData.debugFreePurchases ? 'var(--color-secondary-accent)' : '#aaa';
         toggleFreePurchasesButton.style.color = gameData.debugFreePurchases ? 'white' : 'black';
+    }
+
+    const resetGameButton = document.getElementById('reset-game');
+    if (resetGameButton) {
+        resetGameButton.addEventListener('click', () => {
+            if (confirm('Êtes-vous sûr de vouloir réinitialiser le jeu ? Toutes les données seront perdues.')) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+            }
+        });
     }
 
     const multiplierButtons = document.querySelectorAll('.multiplier-button');

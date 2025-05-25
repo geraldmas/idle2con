@@ -1,5 +1,9 @@
 # Idées de Développement - Chaotic Idle Game
 
+- mécanique d'amélioration : coefficient dans formule + un exposant ? 
+- nouvelle monnaie, voir la mécanique de gain mais : un truc stylé 
+- faut absolument tout renommer
+
 ## I. Système de Prestige
 
 ### 1. Boucles Temporelles
