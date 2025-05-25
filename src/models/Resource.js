@@ -11,31 +11,37 @@ export default class Resource {
   }
 
   // Met à jour la valeur selon la formule p(t+dt) = p(t) + n*a*dt
-  update(dt) {
-    const production = this.generators * this.baseProduction * dt;
-    this.value += production;
+  // Prend maintenant en compte les effets des antiparticules
+  update(dt, antiparticleEffects) {
+    // Appliquer l'exposant de dt provenant des antiparticules
+    const adjustedDt = Math.pow(dt, antiparticleEffects?.dtExponent || 1);
+    
+    // Appliquer le multiplicateur de production global provenant des antiparticules
+    const productionMultiplier = antiparticleEffects?.generatorProductionMultiplier || 1;
+    
+    // Utiliser des calculs plus précis pour la production
+    const production = (this.generators * this.baseProduction * adjustedDt * productionMultiplier);
+    this.value = Number((this.value + production).toFixed(10)); // Limiter à 10 décimales pour éviter les erreurs d'arrondi
 
     // Mettre à jour le prochain palier d'état pour l'affichage si la ressource est 'États'
-    // La logique de gain d'état est maintenant dans TickService, mais on met à jour l'affichage ici si nécessaire.
-    // Cette méthode est maintenant appelée depuis TickService avec la valeur actuelle du potentiel.
-    // if (this.name === 'États') {
-    //   this.updateNextStateMilestone(); // Cette ligne n'est plus pertinente ici
-    // }
+    if (this.name === 'États') {
+      this.updateNextStateMilestone(this.value, antiparticleEffects);
+    }
   }
 
   // Vérifie si un palier d'état est atteint et ajoute un état si c'est le cas
-  checkStateMilestone() {
+  // Prend maintenant en argument la valeur actuelle du potentiel
+  checkStateMilestone(currentPotential) {
     if (this.name !== 'États' || this.nextStateMilestone === null) return;
 
-    // Utiliser la valeur du potentiel (this.value) pour vérifier les paliers
-    while (this.value >= this.nextStateMilestone) {
-      // Ajouter un état (incrémenter la valeur de la ressource États)
-      // Note : Ici on ajoute 1 à la valeur des États, qui représente le nombre d'États possédés.
-      // La méthode getValue() de la ressource États renvoie ce nombre.
-      this.value += 1; 
-      
-      // Calculer le prochain palier
-      this.updateNextStateMilestone(); // Mettre à jour le prochain palier pour l'affichage
+    // Limiter le nombre d'états ajoutés par tick pour éviter les boucles infinies
+    const maxStatesPerTick = 100;
+    let statesAdded = 0;
+
+    while (currentPotential >= this.nextStateMilestone && statesAdded < maxStatesPerTick) {
+        this.value += 1;
+        this.totalEarned += 1;
+        statesAdded++;
     }
   }
 
@@ -81,38 +87,32 @@ export default class Resource {
   }
 
   // Calcule et met à jour le prochain palier d'état à atteindre pour l'affichage
-  // Reçoit la valeur actuelle du potentiel en argument
-  updateNextStateMilestone(currentPotential) {
-    // La logique des paliers d'état pour l'affichage est basée sur 2^(totalEarned / 10)
+  // Reçoit la valeur actuelle du potentiel et les effets des antiparticules en argument
+  // S'assure que le prochain palier est basé sur totalEarned et les effets d'antiparticules
+  updateNextStateMilestone(currentPotential, antiparticleEffects) {
     if (this.name !== 'États') return;
 
-    // Calculer le palier basé sur le nombre d'États GAGNÉS au total avec la base 2^(1/10)
-    this.nextStateMilestone = Math.pow(2, this.totalEarned / 10);
-
-     // S'assurer que le palier affiché est toujours supérieur au potentiel actuel
-     // pour éviter d'afficher un palier déjà dépassé.
-     // On ne veut pas que le palier affiché soit inférieur au potentiel actuel.
-     // S'il l'est, on calcule le palier pour le prochain état à gagner (totalEarned + 1)
-     while (currentPotential >= this.nextStateMilestone && this.nextStateMilestone !== 0) {
-          this.nextStateMilestone = Math.pow(2, (this.totalEarned + 1) / 10);
-          // Petite mesure pour éviter boucle infinie si le potentiel est très élevé d'un coup
-          if (this.nextStateMilestone <= currentPotential && this.totalEarned < 1000) { // Ajout d'une limite raisonnable
-              this.totalEarned += 1; // Avancer le totalEarned pour trouver un palier supérieur
-          } else {
-              break; // Le palier calculé est supérieur au potentiel ou on a atteint la limite
-          }
-     }
-
-    // Gérer le cas initial où totalEarned est 0, le premier palier est Math.pow(2, 0/10) = 1.
-    // Mais le premier état est gagné à 1 potentiel, donc le prochain palier affiché devrait être Math.pow(2, 1/10) après avoir gagné le premier état.
-    // Initialement, avant de gagner le premier état (totalEarned = 0), le prochain palier affiché devrait être 1 (pour indiquer qu'il faut 1 potentiel pour le 1er état).
+    const stateThresholdBase = antiparticleEffects?.stateThresholdBase || 10;
+    
+    // Calculer le prochain palier de manière plus sûre
+    let nextMilestone = Math.pow(2, this.totalEarned / stateThresholdBase);
+    
+    // Si le potentiel actuel est déjà supérieur au palier calculé
+    if (currentPotential >= nextMilestone) {
+        // Calculer directement le prochain palier valide
+        const nextTotalEarned = Math.ceil(Math.log2(currentPotential) * stateThresholdBase);
+        nextMilestone = Math.pow(2, nextTotalEarned / stateThresholdBase);
+    }
+    
+    this.nextStateMilestone = nextMilestone;
+    
+    // Gérer le cas initial
     if (this.totalEarned === 0) {
         this.nextStateMilestone = 1;
     }
-
   }
 
-  // Obtient la valeur actuelle
+  // Obtient la valeur actuelle (nombre d'États possédés pour la ressource États)
   getValue() {
     return this.value;
   }

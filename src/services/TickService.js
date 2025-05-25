@@ -4,23 +4,19 @@ import { reactive } from 'vue';
 class TickService {
   constructor() {
     // Initialisation par défaut - ces collections seront remplacées par celles d'App.vue
-    this.resources = reactive(new Map());
-    // On n'a plus besoin d'une instance interne de GameState ici
-    // this.gameState = reactive(new GameState()); 
+    // this.resources = reactive(new Map()); // Non utilisé directement pour les collections globales
     this.isRunning = false;
     this.debug = false;
     this.dt = 0.1; // dt fixe à 0.1 seconde
     this.intervalId = null; // Pour stocker l'ID de l'intervalle
 
-    // Variables pour stocker les collections réactives passées par App.vue
-    this.gameStateResources = null;
-    this.gameStateGenerators = null;
+    // Variable pour stocker l'état du jeu complet passé par App.vue
+    this.gameState = null;
   }
 
-  // Nouvelle méthode pour recevoir les collections réactives d'App.vue
-  setGameStateCollections(resourcesMap, generatorsArray) {
-    this.gameStateResources = resourcesMap;
-    this.gameStateGenerators = generatorsArray;
+  // Nouvelle méthode pour recevoir l'état du jeu complet d'App.vue
+  setGameState(gameState) {
+    this.gameState = gameState;
   }
 
   // Les méthodes addResource et addGenerator ne sont plus nécessaires ici,
@@ -30,17 +26,17 @@ class TickService {
 
   // getResourcesMap renvoie maintenant la map passée par App.vue
   getResourcesMap() {
-      return this.gameStateResources;
+      return this.gameState?.resources;
   }
 
   getResource(name) {
     // Utiliser la map passée par App.vue
-    return this.gameStateResources?.get(name);
+    return this.gameState?.resources.get(name);
   }
 
   // getGeneratorsArray renvoie maintenant le tableau passé par App.vue
   getGeneratorsArray() {
-      return this.gameStateGenerators;
+      return this.gameState?.generators;
   }
 
   // getGameState n'est plus pertinent si GameState est géré par App.vue
@@ -72,112 +68,151 @@ class TickService {
   }
 
   tick() {
-    if (!this.isRunning || !this.gameStateResources || !this.gameStateGenerators) return;
+    try {
+      if (!this.isRunning || !this.gameState) return;
 
-    // Logs de débogage : afficher les compteurs de tous les générateurs à chaque tick
-    if (this.debug) {
-        let generatorCounts = 'Compteurs Générateurs: ';
-        this.gameStateGenerators.forEach(gen => {
-            generatorCounts += `${gen.name}: ${gen.count} | `;
-        });
-        console.log(generatorCounts);
-    }
-
-    // Mettre à jour le Potentiel
-    const potentiel = this.gameStateResources.get('Potentiel');
-    if (potentiel) {
-      // La production de potentiel vient uniquement des générateurs de rang 1
-      const gen1 = this.gameStateGenerators.find(gen => gen.rank === 1);
-      if (gen1) {
-        // Mettre à jour le N (nombre de générateurs) dans la ressource Potentiel
-        potentiel.setGenerators(gen1.count);
-        const production = gen1.getProduction();
-        
-        const currentValue = potentiel.getValue();
-        potentiel.setValue(currentValue + production * this.dt);
+      // Logs de débogage : afficher les compteurs de tous les générateurs à chaque tick
+      if (this.debug) {
+          let generatorCounts = 'Compteurs Générateurs: ';
+          // Accéder aux générateurs via gameState
+          this.gameState.generators.forEach(gen => {
+              generatorCounts += `${gen.name}: ${gen.count.toFixed(2)} | `; // Utiliser toFixed pour l'affichage
+          });
+          console.log(generatorCounts);
       }
 
-      // Vérifier les paliers de puissance pour les États
-      const etats = this.gameStateResources.get('États');
-      const potentielValue = potentiel.getValue();
+      // Met à jour l'état du jeu à chaque tick
+      // Appliquer les effets des antiparticules avant de mettre à jour les ressources et générateurs
+      const antiparticleEffects = this.gameState.antiparticleEffects || {};
 
-      if (etats && potentiel) {
-        const currentEtatsValue = etats.getValue();
-        let nextStateThreshold = Math.pow(2, etats.totalEarned / 10);
-
-        while (potentielValue >= nextStateThreshold) {
-          etats.value += 1;
-          etats.totalEarned += 1;
-          nextStateThreshold = Math.pow(2, etats.totalEarned / 10);
+      // Mettre à jour les ressources (Potentiel et États)
+      // Accéder aux ressources via gameState
+      this.gameState.resources.forEach(resource => {
+        // Ne pas mettre à jour le Potentiel ici car il sera mis à jour plus tard
+        if (resource.name !== 'Potentiel' && typeof resource.update === 'function') {
+          resource.update(this.dt, antiparticleEffects);
         }
-
-        etats.updateNextStateMilestone(potentielValue);
-      }
-    }
-
-    // Production de Générateurs I par les Générateurs II
-    const gen1 = this.gameStateGenerators.find(gen => gen.rank === 1);
-    const gen2 = this.gameStateGenerators.find(gen => gen.rank === 2);
-    
-    if (gen1 && gen2 && gen2.count > 0) {
-      // Chaque Générateur II produit 0.1 Générateur I par seconde
-      const gen1Production = gen2.count * 0.1 * this.dt;
-      gen1.count += gen1Production;
-      
-      if (this.debug) {
-        console.log(`Production de Générateurs I: +${gen1Production.toFixed(3)} (${gen2.count} Générateurs II)`);
-      }
-    }
-
-    // Production de Générateurs II par les Générateurs III
-    const gen3 = this.gameStateGenerators.find(gen => gen.rank === 3);
-    if (gen2 && gen3 && gen3.count > 0) {
-      // Chaque Générateur III produit 0.1 Générateur II par seconde
-      const gen2Production = gen3.count * 0.1 * this.dt;
-      gen2.count += gen2Production;
-      
-      if (this.debug) {
-        console.log(`Production de Générateurs II: +${gen2Production.toFixed(3)} (${gen3.count} Générateurs III)`);
-      }
-    }
-
-    // Production de Générateurs III par les Générateurs IV
-    const gen4 = this.gameStateGenerators.find(gen => gen.rank === 4);
-    if (gen3 && gen4 && gen4.count > 0) {
-      // Chaque Générateur IV produit 0.1 Générateur III par seconde
-      const gen3Production = gen4.count * 0.1 * this.dt;
-      gen3.count += gen3Production;
-      
-      if (this.debug) {
-        console.log(`Production de Générateurs III: +${gen3Production.toFixed(3)} (${gen4.count} Générateurs IV)`);
-      }
-    }
-
-    // Logique pour vérifier et débloquer les générateurs
-    this.gameStateGenerators.forEach((generator, index) => {
-        generator.updateUnlockStatus(this.gameStateGenerators);
-    });
-
-    if (this.debug) {
-      console.log('Tick:', {
-        dt: this.dt,
-        potentiel: potentiel?.getValue(),
-        etats: this.getResource('États')?.getValue(),
       });
+
+      // Mettre à jour les générateurs (leur logique de déblocage et de coût pourrait dépendre des effets)
+      // Accéder aux générateurs via gameState
+      this.gameState.generators.forEach((generator, index) => {
+        // Revenir à l'appel direct, en attendant une meilleure solution
+        if (typeof generator.updateUnlockStatus === 'function') {
+          // Mettre à jour l'état de déblocage de chaque générateur
+          generator.updateUnlockStatus(this.gameState.generators); // Passer tous les générateurs pour vérification
+        }
+      });
+
+      // Production des générateurs de rang > 1 (production de générateurs de rang inférieur)
+      // Accéder aux générateurs via gameState
+      const gen1 = this.gameState.generators.find(gen => gen.rank === 1);
+      const gen2 = this.gameState.generators.find(gen => gen.rank === 2);
+      const gen3 = this.gameState.generators.find(gen => gen.rank === 3);
+      const gen4 = this.gameState.generators.find(gen => gen.rank === 4);
+
+      // Production de Générateurs I par les Générateurs II
+      if (gen1 && gen2 && gen2.count > 0) {
+        // Chaque Générateur II produit 0.1 Générateur I par seconde
+        const gen1Production = Number((gen2.count * 0.1 * this.dt).toFixed(10));
+        const newGen1Count = Number((gen1.count + gen1Production).toFixed(10));
+        
+        // Mettre à jour le nombre de générateurs
+        gen1.count = newGen1Count;
+      }
+
+      // Production de Générateurs II par les Générateurs III
+      if (gen2 && gen3 && gen3.count > 0) {
+        // Chaque Générateur III produit 0.1 Générateur II par seconde
+        const gen2Production = Number((gen3.count * 0.1 * this.dt).toFixed(10));
+        gen2.count = Number((gen2.count + gen2Production).toFixed(10));
+      }
+
+      // Production de Générateurs III par les Générateurs IV
+      if (gen3 && gen4 && gen4.count > 0) {
+        // Chaque Générateur IV produit 0.1 Générateur III par seconde
+        const gen3Production = Number((gen4.count * 0.1 * this.dt).toFixed(10));
+        gen3.count = Number((gen3.count + gen3Production).toFixed(10));
+      }
+
+      // Mettre à jour le Potentiel après avoir mis à jour tous les générateurs
+      const potentielResource = this.gameState.resources.get('Potentiel');
+      if (potentielResource && gen1) {
+        // Mettre à jour le nombre de générateurs dans la ressource Potentiel
+        potentielResource.setGenerators(gen1.count);
+        
+        // Calculer la production de potentiel
+        const baseProduction = 1/32; // Production de base par générateur
+        const milestoneBonus = gen1.getMilestoneBonus();
+        const antiparticleMultiplier = antiparticleEffects?.generatorProductionMultiplier || 1;
+        
+        // Calculer la production totale
+        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * this.dt).toFixed(10));
+        
+        // Mettre à jour la valeur du potentiel
+        potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
+
+        if (this.debug) {
+          console.log('Production Potentiel:', {
+            count: gen1.count,
+            baseProduction,
+            milestoneBonus,
+            antiparticleMultiplier,
+            dt: this.dt,
+            production: potentielProduction,
+            total: potentielResource.value
+          });
+        }
+      }
+
+      // Vérifier les paliers d'état pour la ressource Potentiel et ajouter des États si nécessaire
+      const etatsResource = this.gameState.resources.get('États');
+      if (potentielResource && etatsResource) {
+        etatsResource.checkStateMilestone(potentielResource.getValue());
+        etatsResource.updateNextStateMilestone(potentielResource.getValue(), antiparticleEffects);
+      }
+
+      if (this.debug) {
+        console.log('Tick:', {
+          dt: this.dt,
+          potentiel: potentielResource?.getValue(),
+          etats: etatsResource?.getValue(),
+        });
+      }
+    } catch (error) {
+      console.error('Erreur dans le tick:', error);
+      this.stop(); // Arrêter le tick en cas d'erreur pour éviter les boucles infinies de plantage
     }
   }
 
   addResource(resource) {
-    this.resources.set(resource.name, resource);
+    // this.resources.set(resource.name, resource);
   }
 
   getResources() {
-    return Array.from(this.resources.values());
+    // return Array.from(this.resources.values());
   }
 
   setTickRate(rate) {
-    this.tickRate = rate;
+     // Si la vitesse de tick doit être affectée par les antiparticules, la logique serait ici.
+     // Par exemple, ajuster this.dt * 1000 dans setInterval en fonction des effets.
+     // Pour l'instant, on utilise un dt fixe de 0.1.
+     // this.dt = ... calcule basé sur les effets si nécessaire ...
+     // this.restartInterval(); // Méthode pour clear et reset l'intervalle avec le nouveau dt
   }
+
+  // Méthode utilitaire pour redémarrer l'intervalle si le tick rate change
+  restartInterval() {
+      if (this.intervalId) {
+          clearInterval(this.intervalId);
+      }
+      if (this.isRunning) {
+          this.intervalId = setInterval(() => this.tick(), this.dt * 1000); // Utiliser le dt interne
+      }
+  }
+
+  // L'ancienne méthode update est fusionnée dans tick
+  // update() { ... }
 }
 
 export default new TickService(); 

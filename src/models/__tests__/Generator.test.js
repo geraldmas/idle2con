@@ -20,7 +20,7 @@ describe('Generator', () => {
         expect(gen1.baseCost).toEqual({ states: 1, generator: 0 });
         expect(gen1.growthRates).toEqual({ states: 1.2, generator: 0 });
         expect(gen1.count).toBe(0);
-        expect(gen1.isUnlocked()).toBe(true);
+        expect(gen1.isUnlocked).toBe(true);
         expect(gen1.unlockedFeatures.size).toBe(0);
     });
 
@@ -30,7 +30,7 @@ describe('Generator', () => {
         expect(gen2.baseCost).toEqual({ states: 10, generator: 10 });
         expect(gen2.growthRates).toEqual({ states: 1.3, generator: 1.1 });
         expect(gen2.count).toBe(0);
-        expect(gen2.isUnlocked()).toBe(false);
+        expect(gen2.isUnlocked).toBe(false);
         expect(gen2.unlockedFeatures.size).toBe(0);
     });
 
@@ -80,7 +80,7 @@ describe('Generator', () => {
         generators[0].maxCount = 10;
         const gen2 = generators[1];
         gen2.updateUnlockStatus(generators);
-        expect(gen2.isUnlocked()).toBe(false);
+        expect(gen2.isUnlocked).toBe(false);
         expect(gen2.purchase(resources, generators)).toBe(false);
         expect(gen2.count).toBe(0);
         expect(gen2.manualPurchases).toBe(0);

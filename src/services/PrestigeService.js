@@ -7,84 +7,237 @@ export class PrestigeService {
         this.prestigeMultiplier = 1;
         this.antiparticlesUnlocked = false;
         this.supersymmetricParticlesUnlocked = false;
+        this.prestigeThreshold = 1000; // Seuil de prestige modulable
+        this.antipotentialBaseCost = 3; // Coût de base pour observer une antiparticule
+        this.antipotentialGrowthRate = 1.1; // Taux de croissance du coût
+        this.gameState = new GameState();
     }
 
-    canPrestige() {
-        const storage = new ParticleStorage();
-        const particles = storage.getParticles();
+    canPrestige(gameState) {
+        // S'assurer que gameState et ses propriétés nécessaires existent
+        const potential = gameState?.resources.get('Potentiel')?.getValue();
+        const hasGen1 = gameState?.particles.some(p => p.generation === 1); // Exemple, à adapter si la vérification des particules est plus complexe
+        const hasGen2 = gameState?.particles.some(p => p.generation === 2);
+        const hasGen3 = gameState?.particles.some(p => p.generation === 3);
 
-        // Vérifier la génération 1 (électron, neutrino e, quark up, quark down)
-        const hasGen1Electron = particles.some(p => p.generation === 1 && p.type === 'electron');
-        const hasGen1Neutrino = particles.some(p => p.generation === 1 && p.type === 'neutrinoE');
-        const hasGen1QuarkUp = particles.some(p => p.generation === 1 && p.type === 'quarkUp');
-        const hasGen1QuarkDown = particles.some(p => p.generation === 1 && p.type === 'quarkDown');
-        const hasGen1 = hasGen1Electron && hasGen1Neutrino && hasGen1QuarkUp && hasGen1QuarkDown;
-
-        // Vérifier la génération 2 (muon, neutrino mu, quark charm, quark strange)
-        const hasGen2Muon = particles.some(p => p.generation === 2 && p.type === 'muon');
-        const hasGen2Neutrino = particles.some(p => p.generation === 2 && p.type === 'neutrinoMu');
-        const hasGen2QuarkCharm = particles.some(p => p.generation === 2 && p.type === 'quarkCharm');
-        const hasGen2QuarkStrange = particles.some(p => p.generation === 2 && p.type === 'quarkStrange');
-        const hasGen2 = hasGen2Muon && hasGen2Neutrino && hasGen2QuarkCharm && hasGen2QuarkStrange;
-
-        // Vérifier la génération 3 (tau, neutrino tau, quark truth, quark beauty)
-        const hasGen3Tau = particles.some(p => p.generation === 3 && p.type === 'tau');
-        const hasGen3Neutrino = particles.some(p => p.generation === 3 && p.type === 'neutrinoTau');
-        const hasGen3QuarkTruth = particles.some(p => p.generation === 3 && p.type === 'quarkTruth');
-        const hasGen3QuarkBeauty = particles.some(p => p.generation === 3 && p.type === 'quarkBeauty');
-        const hasGen3 = hasGen3Tau && hasGen3Neutrino && hasGen3QuarkTruth && hasGen3QuarkBeauty;
-        
-        return hasGen1 && hasGen2 && hasGen3;
+        return typeof potential === 'number' && potential > 0 && potential >= this.prestigeThreshold && hasGen1 && hasGen2 && hasGen3;
     }
 
-    performPrestige() {
-        if (!this.canPrestige()) {
-            return false;
+    calculateAntipotentialGain(gameState) {
+        const potential = gameState?.resources.get('Potentiel')?.getValue();
+        if (typeof potential !== 'number' || potential <= 0) {
+            return 0;
+        }
+        return Math.floor(Math.log10(potential));
+    }
+
+    getAntiparticleCost(antiparticleCount) {
+        if (typeof antiparticleCount !== 'number' || antiparticleCount < 0) {
+            return this.antipotentialBaseCost;
+        }
+        return Math.floor(this.antipotentialBaseCost * Math.pow(this.antipotentialGrowthRate, antiparticleCount));
+    }
+
+    applyPrestige(gameState) {
+        // Valider l'état du jeu avant d'appliquer le prestige
+        if (!gameState || typeof gameState.resources.get('Potentiel')?.getValue() !== 'number') {
+            throw new Error('État de jeu invalide pour le prestige');
         }
 
-        // Sauvegarde des bosons (particules de génération 4)
-        const storage = new ParticleStorage();
-        const bosons = storage.getBosons();
-        
-        // Réinitialisation du jeu
-        const gameState = new GameState();
-        gameState.reset();
+        if (!this.canPrestige(gameState)) {
+            throw new Error('Conditions de prestige non remplies');
+        }
 
-        // Restauration des bosons
-        bosons.forEach(boson => {
-            storage.addParticle(boson);
+        const antipotentialGain = this.calculateAntipotentialGain(gameState);
+        
+        // Réinitialiser les ressources et structures
+        gameState.resources.forEach(resource => {
+            // Réinitialisation spécifique de Potentiel et États
+            if (resource.name === 'Potentiel') resource.value = 0;
+            if (resource.name === 'États') {
+                 resource.value = 0; // Réinitialiser les états
+                 // Réinitialiser le prochain palier d'état à sa valeur initiale (1)
+                 resource.nextStateMilestone = 1;
+                 // Assurez-vous que la propriété totalEarned est également réinitialisée pour les États si elle influence la logique de seuil
+                 if (resource.totalEarned !== undefined) { // Vérifier si la propriété existe
+                     resource.totalEarned = 0;
+                 }
+            }
+            // Vous pourriez vouloir réinitialiser d'autres ressources ici si nécessaire selon la spec.
+             // Si d'autres ressources ont une propriété nextStateMilestone ou similaire, réinitialisez-la à null ou à sa valeur par défaut.
+             if (resource.name !== 'États' && resource.nextStateMilestone !== undefined) {
+                 resource.nextStateMilestone = null; // Ou sa valeur par défaut si différente de null
+             }
         });
 
-        // Mise à jour du niveau de prestige
-        this.prestigeLevel++;
-        this.prestigeMultiplier = Math.pow(1.5, this.prestigeLevel);
-
-        // Déblocage des antiparticules au premier prestige
-        if (this.prestigeLevel === 1) {
-            this.antiparticlesUnlocked = true;
+        if (Array.isArray(gameState.generators)) {
+            gameState.generators.forEach(generator => {
+                if (generator && typeof generator.count === 'number') {
+                    generator.count = 0; // Réinitialiser le compte de tous les générateurs
+                     // Réinitialiser les paliers atteints
+                     if (Array.isArray(generator.reachedMilestones)) {
+                         generator.reachedMilestones = [];
+                     }
+                }
+            });
+             // Assurez-vous que le Générateur 1 redémarre avec 1
+             const gen1 = gameState.generators.find(g => g.rank === 1);
+             if(gen1) {
+                 gen1.count = 1;
+                  // Mettre à jour la ressource Potentiel pour refléter le nouveau nombre de générateurs
+                  const potentielResource = gameState.resources.get('Potentiel');
+                  if (potentielResource) {
+                      potentielResource.setGenerators(gen1.count);
+                  }
+             }
         }
 
-        // Déblocage des particules supersymétriques au deuxième prestige
-        if (this.prestigeLevel === 2) {
-            this.supersymmetricParticlesUnlocked = true;
+        // Perdre TOUTES les particules au prestige
+        gameState.particles = [];
+
+        // Ajouter les points d'antipotentiel
+        gameState.antipotential = (gameState.antipotential || 0) + antipotentialGain;
+
+        // Mettre à jour le niveau de prestige et le multiplicateur dans gameState
+        // Assurer que ces propriétés existent dans gameState ou y sont ajoutées
+        gameState.prestigeLevel = (gameState.prestigeLevel || 0) + 1;
+        gameState.prestigeMultiplier = Math.pow(1.5, gameState.prestigeLevel);
+        // Débloquer les antiparticules si c'est le premier prestige
+        if (gameState.prestigeLevel === 1) {
+            gameState.antiparticlesUnlocked = true;
         }
 
-        return true;
+        return { // Retourner les valeurs mises à jour pour l'interface
+            antipotentialGain,
+            newAntipotential: gameState.antipotential,
+            prestigeLevel: gameState.prestigeLevel,
+            prestigeMultiplier: gameState.prestigeMultiplier,
+            antiparticlesUnlocked: gameState.antiparticlesUnlocked
+        };
     }
 
-    getPrestigeMultiplier() {
-        return this.prestigeMultiplier;
+    // Méthode pour calculer les effets des antiparticules
+    calculateAntiparticleEffects(gameState) {
+        if (!gameState || !Array.isArray(gameState.antiparticles)) {
+            return {
+                dtExponent: 1,
+                stateThresholdBase: 10, // Valeur par défaut avant bonus
+                generatorProductionMultiplier: 1,
+                costDivider: 1
+            };
+        }
+
+        let totalDtExponentBonus = 0;
+        let totalGeneratorProductionMultiplier = 1;
+        let totalCostDivider = 1;
+        let antineutrinoECount = 0;
+        let antineutrinoMuCount = 0;
+        let antineutrinoTauCount = 0;
+
+        // Compter les antiparticules et accumuler les bonus additifs et multiplicatifs
+        gameState.antiparticles.forEach(antiparticle => {
+            if (!antiparticle || !antiparticle.type) return;
+
+            switch(antiparticle.type) {
+                case 'antielectron':
+                    totalDtExponentBonus += 0.15;
+                    break;
+                case 'antimuon':
+                    totalDtExponentBonus += 0.5; // Corrigé
+                    break;
+                case 'antitauon':
+                    totalDtExponentBonus += 2; // Corrigé
+                    break;
+                case 'antineutrinoE':
+                    antineutrinoECount++;
+                    break;
+                case 'antineutrinoMu':
+                    antineutrinoMuCount++;
+                    break;
+                case 'antineutrinoTau':
+                    antineutrinoTauCount++;
+                    break;
+                case 'antiquarkUp':
+                    totalGeneratorProductionMultiplier *= 1.15;
+                    break;
+                case 'antiquarkCharm':
+                    totalGeneratorProductionMultiplier *= 1.5; // Corrigé
+                    break;
+                case 'antiquarkTruth':
+                    totalGeneratorProductionMultiplier *= 3; // Corrigé
+                    break;
+                case 'antiquarkDown':
+                    totalCostDivider *= 1.15;
+                    break;
+                case 'antiquarkStrange':
+                    totalCostDivider *= 1.5; // Corrigé
+                    break;
+                case 'antiquarkBeauty':
+                    totalCostDivider *= 3; // Corrigé
+                    break;
+            }
+        });
+
+        // Calculer la base du seuil d'état pour les antineutrinos
+        // Nouvelle base : 2^(1/(10+M+4*N+13*P))
+        const stateThresholdBase = 2 / (10 + (antineutrinoECount * 1) + (antineutrinoMuCount * 4) + (antineutrinoTauCount * 13));
+
+        // Appliquer l'effet de l'exposant dt (s'assurer qu'il est >= 1)
+        const finalDtExponent = Math.max(1, 1 + totalDtExponentBonus); // Exponentiel = 1 (base) + bonus additif
+
+        return {
+            dtExponent: finalDtExponent,
+            stateThresholdBase: stateThresholdBase, // Appliquer la nouvelle base calculée
+            generatorProductionMultiplier: totalGeneratorProductionMultiplier,
+            costDivider: totalCostDivider
+        };
     }
 
-    isAntiparticlesUnlocked() {
-        return this.antiparticlesUnlocked;
+    // Les getters lisent maintenant directement depuis gameState
+    getPrestigeLevel(gameState) {
+        return gameState?.prestigeLevel || 0;
     }
 
-    isSupersymmetricParticlesUnlocked() {
-        return this.supersymmetricParticlesUnlocked;
+    getPrestigeMultiplier(gameState) {
+        return gameState?.prestigeMultiplier || 1;
     }
 
-    getPrestigeLevel() {
-        return this.prestigeLevel;
+    isAntiparticlesUnlocked(gameState) {
+        return gameState?.antiparticlesUnlocked || false;
     }
-} 
+
+    isSupersymmetricParticlesUnlocked(gameState) {
+        return gameState?.supersymmetricParticlesUnlocked || false;
+    }
+
+    // Méthode utilitaire pour formater les nombres (peut rester statique ou être déplacée)
+    formatNumber(number) {
+        if (typeof number !== 'number') {
+            return '0';
+        }
+        if (number >= 1e9) {
+            return (number / 1e9).toFixed(2) + 'G';
+        }
+        if (number >= 1e6) {
+            return (number / 1e6).toFixed(2) + 'M';
+        }
+        if (number >= 1e3) {
+            return (number / 1e3).toFixed(2) + 'K';
+        }
+        return number.toFixed(2);
+    }
+
+    // Ajout d'une méthode reset si PrestigeService gère un état interne qui nécessite une réinitialisation
+    // Sinon, si toutes les données sont dans gameState, cette méthode n'est pas nécessaire ici.
+    // reset(gameState) {
+    //     // Réinitialiser les propriétés internes si elles existent
+    //     this.prestigeLevel = 0;
+    //     this.prestigeMultiplier = 1;
+    //     this.antiparticlesUnlocked = false;
+    //     this.supersymmetricParticlesUnlocked = false;
+    //     // Le gameState est réinitialisé ailleurs, donc pas besoin de le faire ici.
+    // }
+}
+
+// Déplacer ou rendre accessible ParticleStorage et GameState si nécessaire pour d'autres services
+// export { ParticleStorage, GameState }; // Exemple si elles sont utilisées ailleurs et doivent être exportées 

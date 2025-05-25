@@ -36,18 +36,13 @@
             v-for="(generator, index) in gameState.generators"
             :key="generator.name"
             :name="generator.name"
-            :count="generator.count"
-            :production="generator.getBaseProduction()"
-            :cost="generator.getCost()"
-            :generator-cost="generator.getGeneratorCost()"
-            :is-unlocked="generator.isUnlocked()"
-            :unlock-requirement="generator.rank > 1 ? '10 générateurs précédents' : ''"
-            :can-afford="generator.canAfford(gameState.resources.get('États'), gameState.generators)"
+            :generator="generator"
+            :unlock-requirement="generator.unlockRequirement"
             :milestone-progress="generator.getMilestoneProgress()"
             :next-milestone="generator.getNextMilestone()"
             :milestone-bonus="generator.getMilestoneBonus()"
             :reached-milestones="generator.getReachedMilestones()"
-            @buy="buyGenerator(index)"
+            @buy="handleBuyGenerator(index, $event)"
           />
         </div>
       </section>
@@ -91,7 +86,8 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive, provide, inject } from 'vue';
+import { markRaw } from 'vue';
 import Resource from './models/Resource';
 import Generator from './models/Generator';
 import { Particle } from './models/Particle';
@@ -104,6 +100,7 @@ import { ParticleFusion } from './services/ParticleFusion';
 import Prestige from './components/Prestige.vue';
 import { ParticleStorage } from './services/ParticleStorage';
 import { SaveService } from './services/SaveService';
+import { PrestigeService } from './services/PrestigeService';
 
 // Créer un bus d'événements global
 export const eventBus = {
@@ -138,6 +135,7 @@ export default {
   setup() {
     const saveService = new SaveService();
     const particleStorage = new ParticleStorage();
+    const prestigeService = new PrestigeService();
 
     // État local réactif pour l'affichage
     const gameState = reactive({
@@ -147,7 +145,8 @@ export default {
       prestigeLevel: 0,
       prestigeMultiplier: 1,
       antiparticlesUnlocked: false,
-      supersymmetricParticlesUnlocked: false
+      supersymmetricParticlesUnlocked: false,
+      antiparticleEffects: {}
     });
 
     const isDebugEnabled = ref(false);
@@ -171,21 +170,40 @@ export default {
     };
 
     const buyGenerator = (index) => {
-      // Obtenir le générateur depuis l'état local
-      const generator = gameState.generators[index];
-      // Obtenir la ressource États depuis l'état local
-      const states = gameState.resources.get('États');
-      
-      // Appeler la méthode purchase avec les objets réactifs de l'état local
-      const purchaseSuccessful = states && generator.purchase(states, gameState.generators);
-      
-      if (purchaseSuccessful) {
-          console.log(`Achat de ${generator.name} réussi.`);
-          // La modification de l'état se fait directement dans purchase
-          // L'interface se mettra à jour grâce à la réactivité de gameState
-      } else {
-          console.log(`Achat de ${generator.name} échoué.`);
-      }
+      // Cette fonction n'est plus utilisée car la logique d'achat est déplacée dans handleBuyGenerator
+      // const generator = gameState.generators[index];
+      // const states = gameState.resources.get('États');
+      // const purchaseSuccessful = states && generator.purchase(states, gameState.generators);
+      // if (purchaseSuccessful) {
+      //     console.log(`Achat de ${generator.name} réussi.`);
+      // } else {
+      //     console.log(`Achat de ${generator.name} échoué.`);
+      // }
+    };
+
+    // Nouvelle méthode pour gérer l'événement 'buy' du composant Generator
+    const handleBuyGenerator = (index, eventData) => {
+        const generator = eventData.generator; // L'objet generator est passé dans l'événement
+        const gameState = eventData.gameState; // L'état du jeu est passé dans l'événement
+
+        const states = gameState.resources.get('États');
+        
+        // Appeler la méthode purchase du generator avec les ressources et gameState
+        const purchaseSuccessful = states && generator.purchase(states, gameState.generators, gameState);
+
+        if (purchaseSuccessful) {
+             console.log(`Achat de ${generator.name} réussi.`);
+            // Mettre à jour la ressource Potentiel si le générateur affecte le nombre de générateurs de rang 1
+            if (generator.rank === 1) {
+                 const potentielResource = gameState.resources.get('Potentiel');
+                 if (potentielResource) {
+                      potentielResource.setGenerators(generator.count); // S'assurer que Potentiel utilise le count mis à jour
+                 }
+            }
+        } else {
+             console.log(`Achat de ${generator.name} échoué.`);
+             // Afficher un message à l'utilisateur si nécessaire (pas assez de ressources, etc.)
+        }
     };
 
     // Cette fonction n'initialise plus directement l'état global, mais crée les instances
@@ -196,10 +214,10 @@ export default {
 
       // Initialiser les générateurs
       const initialGenerators = [
-        reactive(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.2 })), // Générateur 1: coût initial 1 état
-        reactive(new Generator(2, { generator: 10, states: 10 }, { generator: 1.1, states: 1.3 })), // Générateur 2: débloqué à 10 Gén. I, coût 10 Gén. I + 10 états
-        reactive(new Generator(3, { generator: 10, states: 50 }, { generator: 1.2, states: 1.4 })), // Générateur 3: débloqué à 10 Gén. II, coût 10 Gén. II + 50 états
-        reactive(new Generator(4, { generator: 10, states: 200 }, { generator: 1.3, states: 1.5 })), // Générateur 4: débloqué à 10 Gén. III, coût 10 Gén. III + 200 états
+        markRaw(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.2 })), // Générateur 1: coût initial 1 état
+        markRaw(new Generator(2, { generator: 10, states: 10 }, { generator: 1.1, states: 1.3 })), // Générateur 2: débloqué à 10 Gén. I, coût 10 Gén. I + 10 états
+        markRaw(new Generator(3, { generator: 10, states: 50 }, { generator: 1.2, states: 1.4 })), // Générateur 3: débloqué à 10 Gén. II, coût 10 Gén. II + 50 états
+        markRaw(new Generator(4, { generator: 10, states: 200 }, { generator: 1.3, states: 1.5 })), // Générateur 4: débloqué à 10 Gén. III, coût 10 Gén. III + 200 états
       ];
 
       // Configurer les noms des générateurs
@@ -219,6 +237,9 @@ export default {
           initialGen1.count = 1; // Le joueur commence avec 1 générateur de rang 1
           // Configurer la ressource Potentiel pour utiliser ce count initial
           potentiel.setGenerators(initialGen1.count);
+          // Initialiser la valeur du Potentiel
+          potentiel.value = 0;
+          potentiel.baseProduction = 1/32;
       }
 
        return { resources: new Map([[potentiel.name, potentiel], [etats.name, etats]]), generators: initialGenerators };
@@ -231,6 +252,7 @@ export default {
         
         // Réinitialiser l'état du jeu
         const initialData = initializeGameData();
+        // Rendre les objets réactifs à nouveau après réinitialisation
         gameState.resources = reactive(initialData.resources);
         gameState.generators = reactive(initialData.generators);
         gameState.particles = [];
@@ -240,7 +262,10 @@ export default {
         gameState.supersymmetricParticlesUnlocked = false;
 
         // Réinitialiser le TickService
-        TickService.setGameStateCollections(gameState.resources, gameState.generators);
+        TickService.setGameState(gameState);
+        
+        // Mettre à jour le PrestigeService avec le nouvel état
+        // Pas besoin de reset si le service est stateless et reçoit l'état en argument
       }
     };
 
@@ -249,48 +274,47 @@ export default {
       if (savedData) {
         console.log('Chargement des données sauvegardées:', savedData);
 
-        // Charger les ressources
+        // Recréer les instances de classe à partir des données sauvegardées
+        const loadedResources = new Map();
         savedData.resources.forEach(resourceData => {
-          const resource = gameState.resources.get(resourceData.name);
-          if (resource) {
-            resource.value = resourceData.value;
+            const resource = markRaw(new Resource(resourceData.name, resourceData.value));
+            // Copier les autres propriétés sauvegardées
             resource.totalEarned = resourceData.totalEarned;
             resource.nextStateMilestone = resourceData.nextStateMilestone;
             if (resourceData.generators !== undefined) {
-              resource.generators = resourceData.generators;
+                 resource.generators = resourceData.generators;
             }
-          }
+            loadedResources.set(resource.name, resource);
         });
 
-        // Charger les générateurs
-        savedData.generators.forEach(generatorData => {
-          const generator = gameState.generators.find(g => g.rank === generatorData.rank);
-          if (generator) {
-            generator.count = generatorData.count;
-            generator.reachedMilestones = generatorData.reachedMilestones;
-          }
+        const loadedGenerators = savedData.generators.map(generatorData => {
+             const generator = markRaw(new Generator(generatorData.rank, generatorData.baseCost, generatorData.growthRates));
+             // Copier les autres propriétés sauvegardées
+             generator.count = generatorData.count;
+             generator.reachedMilestones = generatorData.reachedMilestones;
+             generator.maxCount = generatorData.maxCount; // S'assurer de charger maxCount
+             generator.manualPurchases = generatorData.manualPurchases; // S'assurer de charger manualPurchases
+             // Note: _isUnlocked est une ref, elle sera initialisée correctement dans le constructor
+             // et mise à jour par le tick après le chargement de tous les générateurs.
+             return generator;
         });
 
-        // Charger les particules une seule fois
-        if (savedData.particles && savedData.particles.length > 0) {
-          const loadedParticles = savedData.particles.map(p => Particle.fromJSON(p));
-          gameState.particles = loadedParticles;
-          particleStorage.particles = loadedParticles;
-        }
+        const loadedParticles = (savedData.particles || []).map(p => Particle.fromJSON(p));
 
-        // Charger les données de prestige
-        if (savedData.prestigeLevel !== undefined) {
-          gameState.prestigeLevel = savedData.prestigeLevel;
-        }
-        if (savedData.prestigeMultiplier !== undefined) {
-          gameState.prestigeMultiplier = savedData.prestigeMultiplier;
-        }
-        if (savedData.antiparticlesUnlocked !== undefined) {
-          gameState.antiparticlesUnlocked = savedData.antiparticlesUnlocked;
-        }
-        if (savedData.supersymmetricParticlesUnlocked !== undefined) {
-          gameState.supersymmetricParticlesUnlocked = savedData.supersymmetricParticlesUnlocked;
-        }
+        // Mettre à jour l'état du jeu avec les nouvelles instances réactives
+        // Utiliser Object.assign ou copier manuellement les propriétés pour conserver la réactivité de gameState
+        // Option 1: copier manuellement (plus sûr pour la réactivité racine)
+        gameState.resources = reactive(loadedResources);
+        gameState.generators = reactive(loadedGenerators);
+        gameState.particles = loadedParticles; // particles est déjà géré comme un tableau
+        gameState.prestigeLevel = savedData.prestigeLevel || 0;
+        gameState.prestigeMultiplier = savedData.prestigeMultiplier || 1;
+        gameState.antiparticlesUnlocked = savedData.antiparticlesUnlocked || false;
+        gameState.supersymmetricParticlesUnlocked = savedData.supersymmetricParticlesUnlocked || false;
+         // antiparticleEffects sera recalculé au premier tick
+
+        // Mettre à jour particleStorage avec les particules chargées
+        particleStorage.particles = loadedParticles;
       }
     };
 
@@ -298,16 +322,68 @@ export default {
       saveService.saveGame(gameState);
     };
 
+    const updateGameState = () => {
+      // Mettre à jour les ressources
+      gameState.resources.forEach(resource => {
+        // Ne pas mettre à jour le Potentiel ici car il sera mis à jour plus tard
+        if (resource.name !== 'Potentiel' && typeof resource.update === 'function') {
+          resource.update(TickService.getDt(), gameState.antiparticleEffects);
+        }
+      });
+
+      // Mettre à jour les générateurs
+      gameState.generators.forEach(generator => {
+        if (typeof generator.updateUnlockStatus === 'function') {
+          generator.updateUnlockStatus(gameState.generators);
+        }
+      });
+
+      // Mettre à jour le Potentiel
+      const potentielResource = gameState.resources.get('Potentiel');
+      const gen1 = gameState.generators.find(gen => gen.rank === 1);
+      if (potentielResource && gen1) {
+        // Mettre à jour le nombre de générateurs dans la ressource Potentiel
+        potentielResource.setGenerators(gen1.count);
+        
+        // Calculer la production de potentiel
+        const baseProduction = 1/32; // Production de base par générateur
+        const milestoneBonus = gen1.getMilestoneBonus();
+        const antiparticleMultiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
+        
+        // Calculer la production totale
+        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * TickService.getDt()).toFixed(10));
+        
+        // Mettre à jour la valeur du potentiel
+        potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
+
+        if (isDebugEnabled.value) {
+          console.log('Production Potentiel:', {
+            count: gen1.count,
+            baseProduction,
+            milestoneBonus,
+            antiparticleMultiplier,
+            dt: TickService.getDt(),
+            production: potentielProduction,
+            total: potentielResource.value
+          });
+        }
+      }
+
+      // Calculer et stocker les effets des antiparticules
+      gameState.antiparticleEffects = prestigeService.calculateAntiparticleEffects(gameState);
+    };
+
     onMounted(() => {
       // Initialiser les données du jeu (ressources et générateurs)
       const initialData = initializeGameData();
       
-      // Peupler l'état local réactif et le TickService avec les données initiales
-      gameState.resources = reactive(initialData.resources);
-      gameState.generators = reactive(initialData.generators);
+      // Peupler l'état local réactif avec les données initiales
+      // Les instances sont déjà markRaw, la collection Map/Array est réactive.
+      gameState.resources = reactive(initialData.resources); // La Map elle-même est réactive
+      gameState.generators = reactive(initialData.generators); // Le tableau lui-même est réactif
 
-      // Passer les collections réactives au TickService
-      TickService.setGameStateCollections(gameState.resources, gameState.generators);
+      // Passer l'état du jeu au TickService
+      TickService.setGameState(gameState);
 
       // Charger la sauvegarde si elle existe
       loadSavedGame();
@@ -315,6 +391,9 @@ export default {
       // Initialiser les particules
       const particleInitializer = new ParticleInitializer();
       particleInitializer.initialize();
+
+      // Le PrestigeService est maintenant géré ici et n'a pas besoin d'être passé explicitement
+      // Ses méthodes recevront gameState en argument si nécessaire.
 
       // Démarrer le système de ticks
       TickService.start();
@@ -399,20 +478,20 @@ export default {
       }, 1);
     };
 
+    // Fournir l'état du jeu aux composants enfants
+    provide('gameState', gameState);
+
     // Retourner l'état local réactif pour l'affichage
     return {
       gameState,
       isDebugEnabled,
       formatNumber,
       toggleDebug,
-      buyGenerator,
       TickService,
       handleParticleObserved,
       handleParticleFusion,
-      getTotalDtMultiplier,
-      getTotalGeneratorBonus,
-      getTotalCostReduction,
-      resetGame
+      resetGame,
+      handleBuyGenerator
     };
   }
 }

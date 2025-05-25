@@ -13,9 +13,19 @@
         <span class="value">x{{ formatNumber(prestigeMultiplier) }}</span>
       </div>
 
+      <div class="antipotential">
+        <span class="label">Antipotentiel:</span>
+        <span class="value">{{ formatNumber(currentAntipotential) }}</span>
+      </div>
+
       <div class="prestige-requirements" v-if="!canPrestige">
         <h3>Conditions pour Prestiger:</h3>
         <ul>
+          <li :class="{ 'met': hasEnoughPotential, 'not-met': !hasEnoughPotential }">
+            <span class="status-indicator">{{ hasEnoughPotential ? '✓' : '×' }}</span>
+            Potentiel > 1000 ({{ formatNumber(currentPotential) }}/1000)
+          </li>
+
           <li class="generation-title">Génération 1:</li>
           <li :class="{ 'met': hasGen1Electron, 'not-met': !hasGen1Electron }">
             <span class="status-indicator">{{ hasGen1Electron ? '✓' : '×' }}</span>
@@ -92,7 +102,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, onUnmounted } from 'vue';
+import { ref, onMounted, computed, onUnmounted, inject } from 'vue';
 import { PrestigeService } from '../services/PrestigeService';
 import { ParticleStorage } from '../services/ParticleStorage';
 import { eventBus } from '../App.vue';
@@ -101,93 +111,100 @@ export default {
   name: 'Prestige',
   
   setup() {
+    // Injecter l'état du jeu global
+    const gameState = inject('gameState');
     const prestigeService = new PrestigeService();
     const particleStorage = new ParticleStorage();
     
-    const prestigeLevel = ref(prestigeService.getPrestigeLevel());
-    const prestigeMultiplier = ref(prestigeService.getPrestigeMultiplier());
-    const canPrestige = ref(prestigeService.canPrestige());
-    const antiparticlesUnlocked = ref(prestigeService.isAntiparticlesUnlocked());
-    const supersymmetricParticlesUnlocked = ref(prestigeService.isSupersymmetricParticlesUnlocked());
+    const prestigeLevel = computed(() => gameState?.prestigeLevel || 0);
+    const prestigeMultiplier = computed(() => gameState?.prestigeMultiplier || 1);
+    const currentPotential = computed(() => gameState?.resources.get('Potentiel')?.getValue() || 0);
+    const currentAntipotential = computed(() => gameState?.antipotential || 0);
     
-    // Génération 1
-    const hasGen1Electron = ref(false);
-    const hasGen1Neutrino = ref(false);
-    const hasGen1QuarkUp = ref(false);
-    const hasGen1QuarkDown = ref(false);
+    const hasEnoughPotential = computed(() => currentPotential.value >= 1000);
+    
+    const particles = computed(() => gameState?.particles || []);
 
-    // Génération 2
-    const hasGen2Muon = ref(false);
-    const hasGen2Neutrino = ref(false);
-    const hasGen2QuarkCharm = ref(false);
-    const hasGen2QuarkStrange = ref(false);
+    const hasGen1Electron = computed(() => particles.value.some(p => p.generation === 1 && p.type === 'electron'));
+    const hasGen1Neutrino = computed(() => particles.value.some(p => p.generation === 1 && p.type === 'neutrinoE'));
+    const hasGen1QuarkUp = computed(() => particles.value.some(p => p.generation === 1 && p.type === 'quarkUp'));
+    const hasGen1QuarkDown = computed(() => particles.value.some(p => p.generation === 1 && p.type === 'quarkDown'));
 
-    // Génération 3
-    const hasGen3Tau = ref(false);
-    const hasGen3Neutrino = ref(false);
-    const hasGen3QuarkTruth = ref(false);
-    const hasGen3QuarkBeauty = ref(false);
+    const hasGen2Muon = computed(() => particles.value.some(p => p.generation === 2 && p.type === 'muon'));
+    const hasGen2Neutrino = computed(() => particles.value.some(p => p.generation === 2 && p.type === 'neutrinoMu'));
+    const hasGen2QuarkCharm = computed(() => particles.value.some(p => p.generation === 2 && p.type === 'quarkCharm'));
+    const hasGen2QuarkStrange = computed(() => particles.value.some(p => p.generation === 2 && p.type === 'quarkStrange'));
 
-    const updateParticleChecks = (particles) => {
-      // Génération 1
-      hasGen1Electron.value = particles.some(p => p.generation === 1 && p.type === 'electron');
-      hasGen1Neutrino.value = particles.some(p => p.generation === 1 && p.type === 'neutrinoE');
-      hasGen1QuarkUp.value = particles.some(p => p.generation === 1 && p.type === 'quarkUp');
-      hasGen1QuarkDown.value = particles.some(p => p.generation === 1 && p.type === 'quarkDown');
+    const hasGen3Tau = computed(() => particles.value.some(p => p.generation === 3 && p.type === 'tau'));
+    const hasGen3Neutrino = computed(() => particles.value.some(p => p.generation === 3 && p.type === 'neutrinoTau'));
+    const hasGen3QuarkTruth = computed(() => particles.value.some(p => p.generation === 3 && p.type === 'quarkTruth'));
+    const hasGen3QuarkBeauty = computed(() => particles.value.some(p => p.generation === 3 && p.type === 'quarkBeauty'));
 
-      // Génération 2
-      hasGen2Muon.value = particles.some(p => p.generation === 2 && p.type === 'muon');
-      hasGen2Neutrino.value = particles.some(p => p.generation === 2 && p.type === 'neutrinoMu');
-      hasGen2QuarkCharm.value = particles.some(p => p.generation === 2 && p.type === 'quarkCharm');
-      hasGen2QuarkStrange.value = particles.some(p => p.generation === 2 && p.type === 'quarkStrange');
+    const canPrestige = computed(() => {
+      const hasAllParticles = hasGen1Electron.value &&
+        hasGen1Neutrino.value &&
+        hasGen1QuarkUp.value &&
+        hasGen1QuarkDown.value &&
+        hasGen2Muon.value &&
+        hasGen2Neutrino.value &&
+        hasGen2QuarkCharm.value &&
+        hasGen2QuarkStrange.value &&
+        hasGen3Tau.value &&
+        hasGen3Neutrino.value &&
+        hasGen3QuarkTruth.value &&
+        hasGen3QuarkBeauty.value;
 
-      // Génération 3
-      hasGen3Tau.value = particles.some(p => p.generation === 3 && p.type === 'tau');
-      hasGen3Neutrino.value = particles.some(p => p.generation === 3 && p.type === 'neutrinoTau');
-      hasGen3QuarkTruth.value = particles.some(p => p.generation === 3 && p.type === 'quarkTruth');
-      hasGen3QuarkBeauty.value = particles.some(p => p.generation === 3 && p.type === 'quarkBeauty');
+      const meetsPotentialThreshold = hasEnoughPotential.value;
 
-      // Mettre à jour canPrestige
-      canPrestige.value = prestigeService.canPrestige();
-    };
-
+      return meetsPotentialThreshold && hasAllParticles;
+    });
+    
+    const antiparticlesUnlocked = computed(() => gameState?.antiparticlesUnlocked || false);
+    const supersymmetricParticlesUnlocked = computed(() => gameState?.supersymmetricParticlesUnlocked || false);
+    
     const formatNumber = (num) => {
       if (num === undefined || num === null) return '0';
-      if (num >= 1000000) {
-        return (num / 1000000).toFixed(2) + 'M';
+      if (num >= 1e9) {
+        return (num / 1e9).toFixed(2) + 'G';
+      }
+      if (num >= 1e6) {
+        return (num / 1e6).toFixed(2) + 'M';
       }
       if (num >= 1000) {
         return (num / 1000).toFixed(2) + 'K';
       }
-      return num.toFixed(2);
+      return Math.floor(num).toString();
     };
 
     const performPrestige = () => {
-      if (prestigeService.performPrestige()) {
-        prestigeLevel.value = prestigeService.getPrestigeLevel();
-        prestigeMultiplier.value = prestigeService.getPrestigeMultiplier();
-        antiparticlesUnlocked.value = prestigeService.isAntiparticlesUnlocked();
-        supersymmetricParticlesUnlocked.value = prestigeService.isSupersymmetricParticlesUnlocked();
-        canPrestige.value = prestigeService.canPrestige();
+      try {
+        const result = prestigeService.applyPrestige(gameState);
+        console.log('Prestige successful, result:', result);
+      } catch (error) {
+        console.error('Error during prestige:', error);
       }
     };
 
-    // Écouter les changements de particules
     onMounted(() => {
-      // Mettre à jour avec les particules actuelles
-      updateParticleChecks(particleStorage.getParticles());
+      // Si ParticleStorage n'est pas géré dans gameState, vous pourriez avoir besoin de le charger ici
+      // updateParticleChecks(particleStorage.getParticles()); // Example if needed
       
-      // Écouter les changements futurs
-      eventBus.on('particles-changed', updateParticleChecks);
+      // Si eventBus est toujours utilisé pour d'autres raisons, gardez ces lignes
+      // eventBus.on('particles-changed', updateParticleChecks);
+      // eventBus.on('potential-changed', updatePotential);
     });
 
     onUnmounted(() => {
-      eventBus.off('particles-changed', updateParticleChecks);
+      // eventBus.off('particles-changed', updateParticleChecks);
+      // eventBus.off('potential-changed', updatePotential);
     });
 
     return {
       prestigeLevel,
       prestigeMultiplier,
+      currentPotential,
+      currentAntipotential,
+      hasEnoughPotential,
       canPrestige,
       antiparticlesUnlocked,
       supersymmetricParticlesUnlocked,

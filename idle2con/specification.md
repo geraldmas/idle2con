@@ -84,10 +84,10 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 
 ### **Effets des particules**
 
-* **Électrons, Muons, Tau** : augmentent `dt` de 3%, 5%, 10%
-* **Neutrinos e, mu, tau** : ajoutent 10% des générateurs de rang 2, 3, 4 à `n` respectivement
-* **Quark up, charm, truth** : boost de prod. de générateurs 1 : 3%, 5%, 10%
-* **Quark down, strange, beauty** : réduit les coûts des générateurs 2 à 4 : 3%, 5%, 10%
+* **Électrons, Muons, Tau** : augmentent `dt` de 5%, 20%, 75%
+* **Neutrinos e, mu, tau** : ajoutent 20% des générateurs de rang 2, 3, 4 à `n` respectivement
+* **Quark up, charm, truth** : boost de prod. de générateurs 1 : 5%, 20%, 75%
+* **Quark down, strange, beauty** : réduit les coûts des générateurs 2 à 4 : 5%, 20%, 75%
 
 ### **Fusion de particules**
 
@@ -114,12 +114,36 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 
 ## **7. Prestige système**
 
-* Débloqué après avoir collecté au moins une particule de chaque génération (1 à 3)
+* Débloqué après avoir collecté au moins une particule de chaque génération (1 à 3) ET Potentiel > 1000
 * Effets :
-
   * Réinitialise les ressources et structures
   * Conserve les particules fusionnées (bosons)
   * Débloque les antiparticules (prestige 1) puis les particules supersymétriques (prestige 2)
+  * Gain de log_10(potentiel) points "antipotentiel" (monnaie de prestige)
+
+### **Antiparticules**
+
+* Obtention : coût de base de 3 antipotentiels, croissance exponentielle base 1.1
+* Générations similaires aux particules normales
+
+#### **Effets des antiparticules**
+
+* **Antiélectron, Antimuon, Antitauon** : 
+  * Augmente l'exposant de `dt` de 0.15, 0.5, 2 respectivement (bonus additif)
+  * S'applique uniquement si l'exposant est > 1, sinon le passe à 1
+
+* **Antineutrino électronique, muonique, tauique** :
+  * Diminue les seuils d'obtention des états
+  * Nouvelle base : 2^(1/(10+M+4*N+13*P))
+  * M = nombre d'antineutrino électronique
+  * N = nombre d'antineutrino muonique
+  * P = nombre d'antineutrino tauique
+
+* **Antiquark up, charm, truth** :
+  * Augmente la production de tous les générateurs de 15%, 50%, 200% respectivement (multiplicatif)
+
+* **Antiquark down, strange, beauty** :
+  * Divise tous les coûts actuels par 1.15, 1.5, 3 respectivement (multiplicatif)
 
 ---
 

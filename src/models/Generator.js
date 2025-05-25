@@ -1,49 +1,104 @@
 import TickService from '../services/TickService';
+import { ref } from 'vue';
 
 export default class Generator {
   constructor(rank, baseCost, growthRates) {
     this.rank = rank;
     this.baseCost = baseCost;
     this.growthRates = growthRates; // { generator: 1.2, states: 1.2 }
-    this.count = 0;
-    this._isUnlocked = rank === 1; // Seul le générateur 1 est débloqué au départ
+    this._count = ref(0);
+    this._isUnlocked = ref(rank === 1);
     this.unlockRequirement = null;
     this.unlockedFeatures = new Set();
-    this.maxCount = 0; // Nouvelle propriété pour suivre le nombre maximum atteint
-    this.manualPurchases = 0; // Nouvelle propriété pour suivre les achats manuels
+    this._maxCount = ref(0);
+    this._manualPurchases = ref(0);
   }
 
-  getCost() {
+  get count() {
+    return this._count.value;
+  }
+
+  set count(value) {
+    this._count.value = value;
+    if (value > this._maxCount.value) {
+      this._maxCount.value = value;
+    }
+  }
+
+  get maxCount() {
+    return this._maxCount.value;
+  }
+
+  set maxCount(value) {
+    this._maxCount.value = value;
+  }
+
+  get manualPurchases() {
+    return this._manualPurchases.value;
+  }
+
+  set manualPurchases(value) {
+    this._manualPurchases.value = value;
+  }
+
+  get isUnlocked() {
+    return this._isUnlocked.value;
+  }
+
+  set isUnlocked(value) {
+    this._isUnlocked.value = value;
+  }
+
+  getCost(gameState) {
     // Coût en états selon la spécification
-    const baseStateCost = this.rank === 1;
+    // Appliquer le diviseur de coûts provenant des antiparticules
+    const costDivider = gameState?.antiparticleEffects?.costDivider || 1;
+
+    const baseStateCost = this.rank === 1 ? 1 : // Coût de base en états pour G1
+                          this.rank === 2 ? 10 :
+                          this.rank === 3 ? 50 :
+                          this.rank === 4 ? 200 : 0; // Coûts de base pour G2, G3, G4
+
     const growthRate = this.rank === 1 ? 1.05 : 
                       this.rank === 2 ? 1.1 :
-                      this.rank === 3 ? 1.15 : 1.2;
-    return Math.floor(baseStateCost * Math.pow(growthRate, this.manualPurchases));
+                      this.rank === 3 ? 1.15 : 1.2; // Taux de croissance en états
+
+    // Utiliser manualPurchases pour la croissance exponentielle du coût
+    const calculatedCost = baseStateCost * Math.pow(growthRate, this.manualPurchases);
+
+    return Math.floor(calculatedCost / costDivider); // Appliquer le diviseur de coûts
   }
 
-  getGeneratorCost() {
+  getGeneratorCost(gameState) {
     // Coût en générateurs précédents selon la spécification
+    // Appliquer le diviseur de coûts provenant des antiparticules
+    const costDivider = gameState?.antiparticleEffects?.costDivider || 1;
+
     if (this.rank === 1) {
       return 0; // Le générateur 1 ne coûte pas d'autres générateurs
     }
-    const baseGeneratorCost = 10;
+    const baseGeneratorCost = 10; // Coût de base en générateurs précédents
     const growthRate = this.rank === 2 ? 1.1 :
-                      this.rank === 3 ? 1.2 : 1.3;
-    return Math.floor(baseGeneratorCost * Math.pow(growthRate, this.manualPurchases));
+                      this.rank === 3 ? 1.2 : 1.3; // Taux de croissance en générateurs
+                      
+    // Utiliser manualPurchases pour la croissance exponentielle du coût
+    const calculatedCost = baseGeneratorCost * Math.pow(growthRate, this.manualPurchases);
+
+    return Math.floor(calculatedCost / costDivider); // Appliquer le diviseur de coûts
   }
 
-  canAfford(resources, generators) {
-    // Logs de débogage pour canAfford - Supprimés
-    // if (this.rank === 2) {
-    //     ...
-    // }
-
+  canAfford(resources, generators, gameState) {
     if (this.rank > 1 && (!generators || generators.length === 0)) {
       return false;
     }
 
-    const stateCost = this.getCost();
+    // Si le mode debug est activé, ignorer les coûts
+    if (TickService.debug) {
+      return true; // Toujours abordable en mode debug
+    }
+
+    // Utiliser les méthodes getCost et getGeneratorCost qui prennent en compte les effets
+    const stateCost = this.getCost(gameState);
     const currentState = resources?.value ?? 0;
     
     if (!resources || currentState < stateCost) {
@@ -52,7 +107,7 @@ export default class Generator {
     
     if (this.rank > 1) {
       const previousGenerator = generators[this.rank - 2];
-      const generatorCost = this.getGeneratorCost();
+      const generatorCost = this.getGeneratorCost(gameState); // Utiliser la méthode qui prend en compte les effets
 
       if (!previousGenerator || previousGenerator.count < generatorCost) {
         return false;
@@ -62,8 +117,8 @@ export default class Generator {
     return true;
   }
 
-  purchase(resources, generators) {
-    if (!this.isUnlocked()) {
+  purchase(resources, generators, gameState) {
+    if (!this.isUnlocked) {
       return false;
     }
 
@@ -74,27 +129,32 @@ export default class Generator {
         this.maxCount = this.count;
       }
       this.manualPurchases++;
-      this.checkFeatureUnlocks();
+      this.checkFeatureUnlocks(); // Passez gameState si nécessaire ici
+      this.updateUnlockStatus(generators); // Mettre à jour l'état de déblocage immédiatement après l'achat
       return true;
     }
 
-    if (!this.canAfford(resources, generators)) {
+    // Utiliser canAfford qui prend en compte gameState
+    if (!this.canAfford(resources, generators, gameState)) {
       return false;
     }
 
-    // Déduire le coût en états
-    resources.value -= this.getCost();
+    // Déduire le coût en états en utilisant la méthode getCost qui prend en compte les effets
+    resources.value -= this.getCost(gameState);
 
     // Déduire le coût en générateurs précédents si applicable
     if (this.rank > 1) {
       const previousGeneratorIndex = this.rank - 2;
       if (previousGeneratorIndex >= 0 && previousGeneratorIndex < generators.length) {
           const previousGenerator = generators[previousGeneratorIndex];
-          const costToDeduct = this.getGeneratorCost();
+          // Utiliser la méthode getGeneratorCost qui prend en compte les effets
+          const costToDeduct = this.getGeneratorCost(gameState);
           
           previousGenerator.count -= costToDeduct;
       } else {
-          return false;
+          // Cela ne devrait normalement pas arriver si canAfford a été appelé avant
+          console.error('Erreur logique: impossible de trouver le générateur précédent pour déduire le coût.');
+          return false; 
       }
     }
     
@@ -105,37 +165,51 @@ export default class Generator {
     }
     // Incrémenter le compteur d'achats manuels
     this.manualPurchases++;
-    this.checkFeatureUnlocks();
+    this.checkFeatureUnlocks(); // Passez gameState si nécessaire ici
+    // L'état de déblocage est mis à jour par le TickService
     
     return true;
   }
 
-  getProduction() {
+  getProduction(gameState) {
     // Production de base par tick par générateur
-    const productionPerGenerator = (1/16);
-    let totalProduction = this.count * productionPerGenerator;
+    const baseProductionPerGenerator = 1/32; // Utiliser 1/32 selon la spec Potentiel
 
-    // Appliquer les bonus des paliers de puissance
-    // Paliers : 10, 25, 50, 100, puis tous les 100 jusqu'à 1000
-    const milestones = [10, 25, 50, 100];
-    for (let i = 2; i <= 10; i++) {
-        milestones.push(i * 100);
-    }
+    // Obtenir le bonus des paliers de puissance (basé sur maxCount)
+    const milestoneBonus = this.getMilestoneBonus();
 
-    let bonusMultiplier = 1;
-    milestones.forEach(milestone => {
-        if (this.maxCount >= milestone) {
-            // Chaque palier atteint double la production
-            bonusMultiplier *= 2;
-        }
-    });
+    // Obtenir le multiplicateur global des antiparticules
+    const antiparticleProductionMultiplier = gameState?.antiparticleEffects?.generatorProductionMultiplier || 1;
 
-    return totalProduction * bonusMultiplier;
+    // Production totale avec une meilleure précision
+    const totalProduction = Number((this.count * baseProductionPerGenerator * milestoneBonus * antiparticleProductionMultiplier).toFixed(10));
+
+    return totalProduction;
+  }
+
+  getProductionPerGenerator(gameState) {
+    // Production de base par tick par générateur
+    const baseProductionPerGenerator = 1/32; // Utiliser 1/32 selon la spec Potentiel
+
+    // Obtenir le bonus des paliers de puissance (basé sur maxCount)
+    const milestoneBonus = this.getMilestoneBonus();
+
+    // Obtenir le multiplicateur global des antiparticules
+    const antiparticleProductionMultiplier = gameState?.antiparticleEffects?.generatorProductionMultiplier || 1;
+
+    // Production par générateur avec une meilleure précision
+    const productionPerGenerator = Number((baseProductionPerGenerator * milestoneBonus * antiparticleProductionMultiplier).toFixed(10));
+
+    return productionPerGenerator;
   }
 
   getBaseProduction() {
-    // Retourne la production de base par générateur (sans bonus)
-    return 1/16;
+    // Cette méthode devrait peut-être être renommée ou clarifiée.
+    // Si elle renvoie la production *sans* bonus, elle reste 1/16 (ou 1/32).
+    // Si elle est censée être utilisée pour l'affichage de la production de BASE dans l'UI,
+    // elle devrait peut-être inclure le multiplicateur global si celui-ci est considéré comme BASE.
+    // En l'état, elle renvoie la production de base par unité, sans bonus.
+    return 1/16; // Production de base par générateur par tick
   }
 
   checkUnlockCondition(generators) {
@@ -157,11 +231,14 @@ export default class Generator {
   }
 
   updateUnlockStatus(generators) {
-    this._isUnlocked = this.checkUnlockCondition(generators);
-  }
-
-  isUnlocked() {
-    return this._isUnlocked;
+    if (this.rank === 1) {
+      this._isUnlocked.value = true;
+      return;
+    }
+    
+    const previousGenerator = generators?.find(gen => gen.rank === this.rank - 1);
+    // Mettre à jour la valeur réactive _isUnlocked
+    this._isUnlocked.value = previousGenerator && previousGenerator.count >= 10;
   }
 
   setUnlockRequirement(requirement) {
@@ -191,9 +268,10 @@ export default class Generator {
     return Math.floor(this.count / milestone) * milestone;
   }
 
-  getMilestoneBonus(milestone) {
-    const reachedMilestone = this.getPowerMilestone(milestone);
-    return reachedMilestone > 0 ? Math.pow(2, reachedMilestone / milestone) : 1;
+  getMilestoneBonus() {
+    const reachedMilestones = this.getReachedMilestones();
+    // Le bonus est un multiplicateur pour CHAQUE palier atteint
+    return Math.pow(2, reachedMilestones.length); // Double la production pour chaque palier atteint
   }
 
   getPowerMilestones() {
@@ -204,7 +282,7 @@ export default class Generator {
 
     while (currentMilestone <= maxMilestone) {
       milestones.push(currentMilestone);
-      currentMilestone *= 10;
+      currentMilestone *= 3;
     }
 
     return milestones;
@@ -225,10 +303,5 @@ export default class Generator {
     if (!nextMilestone) return 1; // Tous les paliers sont atteints
     // Utiliser maxCount pour la progression
     return this.maxCount / nextMilestone;
-  }
-
-  getMilestoneBonus() {
-    const reachedMilestones = this.getReachedMilestones();
-    return Math.pow(2, reachedMilestones.length); // Double la production pour chaque palier atteint
   }
 } 

@@ -8,16 +8,16 @@
     <div class="generator-info">
       <div class="production">
         <span class="label">Production:</span>
-        <span class="value">+{{ formatNumber(production * milestoneBonus) }}/s</span>
+        <span class="value">+{{ formatNumber(totalProduction) }}/s</span>
       </div>
       <div class="production-per-generator">
         <span class="label">Production par générateur:</span>
-        <span class="value">+{{ formatNumber(production) }}/s</span>
+        <span class="value">+{{ formatNumber(productionPerGenerator) }}/s</span>
       </div>
       <div class="cost">
         <span class="label">Coût:</span>
         <span class="value">
-          {{ formatNumber(cost) }} États
+          {{ formatNumber(stateCost) }} États
           <span v-if="generatorCost > 0">+ {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span>
         </span>
       </div>
@@ -43,50 +43,33 @@
       @click="buyGenerator"
     >
       <span v-if="!isUnlocked">Débloqué à {{ unlockRequirement }}</span>
-      <span v-else-if="!canAfford && !TickService.debug">Coût: {{ formatNumber(cost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span></span>
+      <span v-else-if="!canAfford && !TickService.debug">Coût: {{ formatNumber(stateCost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span></span>
       <span v-else>Acheter</span>
     </button>
   </div>
 </template>
 
 <script>
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import TickService from '../services/TickService';
 
 export default {
   name: 'Generator',
+  components: {
+    // ParticleFusion // Uncomment if ParticleFusion is used here
+  },
   props: {
     name: {
       type: String,
       required: true
     },
-    count: {
-      type: Number,
-      default: 0
-    },
-    production: {
-      type: Number,
+    generator: {
+      type: Object,
       required: true
-    },
-    cost: {
-      type: Number, // Coût en états
-      required: true
-    },
-    generatorCost: {
-      type: Number, // Coût en générateurs précédents
-      default: 0
-    },
-    isUnlocked: {
-      type: Boolean,
-      default: true
     },
     unlockRequirement: {
       type: String,
       default: ''
-    },
-    canAfford: {
-      type: Boolean,
-      default: false
     },
     milestoneProgress: {
       type: Number,
@@ -107,17 +90,30 @@ export default {
   },
   emits: ['buy'],
   setup(props, { emit }) {
+    const gameState = inject('gameState');
+
+    const totalProduction = computed(() => props.generator ? props.generator.getProduction(gameState) : 0);
+    const productionPerGenerator = computed(() => props.generator ? props.generator.getProductionPerGenerator(gameState) : 0);
+    const stateCost = computed(() => props.generator ? props.generator.getCost(gameState) : 0);
+    const generatorCost = computed(() => props.generator ? props.generator.getGeneratorCost(gameState) : 0);
+    
+    const canAfford = computed(() => props.generator ? props.generator.canAfford(gameState?.resources.get('États'), gameState?.generators, gameState) : false);
+
     const getPreviousGeneratorName = computed(() => {
-      if (props.name.includes('II')) return 'Gén. I';
-      if (props.name.includes('III')) return 'Gén. II';
-      if (props.name.includes('IV')) return 'Gén. III';
+      if (props.generator && props.generator.rank > 1 && gameState?.generators) {
+        const previousGenerator = gameState.generators.find(g => g.rank === props.generator.rank - 1);
+        return previousGenerator ? previousGenerator.name : '';
+      }
       return '';
     });
 
     const formatNumber = (num) => {
-      if (num === undefined || num === null) return '0';
-      if (num >= 1000000) {
-        return (num / 1000000).toFixed(2) + 'M';
+       if (num === undefined || num === null) return '0.00';
+       if (num >= 1e9) {
+        return (num / 1e9).toFixed(2) + 'G';
+      }
+      if (num >= 1e6) {
+        return (num / 1e6).toFixed(2) + 'M';
       }
       if (num >= 1000) {
         return (num / 1000).toFixed(2) + 'K';
@@ -126,15 +122,34 @@ export default {
     };
 
     const buyGenerator = () => {
-      if ((props.canAfford || TickService.debug) && props.isUnlocked) {
-        emit('buy');
-      }
+       emit('buy', { generator: props.generator, gameState });
     };
 
+    const name = computed(() => props.name);
+    const count = computed(() => props.generator ? props.generator.count : 0);
+    const isUnlocked = computed(() => props.generator && props.generator._isUnlocked ? props.generator._isUnlocked.value : false);
+    const milestoneProgress = computed(() => props.generator ? props.generator.getMilestoneProgress() : 0);
+    const nextMilestone = computed(() => props.generator ? props.generator.getNextMilestone() : 0);
+    const milestoneBonus = computed(() => props.generator ? props.generator.getMilestoneBonus() : 1);
+    const reachedMilestones = computed(() => props.generator ? props.generator.getReachedMilestones() : []);
+
     return {
+      totalProduction,
+      productionPerGenerator,
+      stateCost,
+      generatorCost,
+      canAfford,
+      getPreviousGeneratorName,
       formatNumber,
       buyGenerator,
-      getPreviousGeneratorName,
+      name,
+      count,
+      isUnlocked,
+      unlockRequirement: props.unlockRequirement,
+      milestoneProgress,
+      nextMilestone,
+      milestoneBonus,
+      reachedMilestones,
       TickService
     };
   }

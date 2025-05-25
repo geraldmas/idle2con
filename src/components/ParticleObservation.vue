@@ -3,10 +3,11 @@
     <h2>Observation Quantique</h2>
     
     <div class="observation-controls">
+      <!-- Contrôles pour observer les particules normales -->
       <div v-for="rank in 3" :key="rank" class="observation-rank">
         <h3>Générateur Quantique {{ rank }}</h3>
         <div class="observation-info">
-          <span class="cost">Coût: {{ getObservationCost() }} générateurs de rang {{ rank }}</span>
+          <span class="cost">Coût: {{ getParticleObservationCostDisplay() }} générateurs de rang {{ rank }}</span>
           <span class="generator-count">
             Générateurs disponibles: {{ getGeneratorCount(rank) }}
           </span>
@@ -24,29 +25,53 @@
           </span>
         </div>
         <button 
-          @click="observe(rank)"
-          :disabled="!canObserve(rank)"
-          :class="{ 'disabled': !canObserve(rank) }"
+          @click="observeParticle(rank)"
+          :disabled="!canObserveParticle(rank)"
+          :class="{ 'disabled': !canObserveParticle(rank) }"
         >
-          Observer
+          Observer Particule (G{{ rank }})
         </button>
       </div>
+
+      <!-- Contrôles pour observer les antiparticules -->
+      <div class="observation-antiparticle" v-if="areAntiparticlesUnlocked">
+          <h3>Observation d'Antiparticule</h3>
+          <div class="observation-info">
+              <span class="cost">Coût: {{ getAntiparticleObservationCostDisplay() }} Antipotentiel</span>
+              <span class="antipotential-count">
+                  Antipotentiel disponible: {{ formatNumber(currentAntipotential) }}
+              </span>
+               <span class="chances">
+                Chances: Anti-G1: 100% (distribution égale entre types)
+              </span>
+          </div>
+           <button 
+            @click="observeAntiparticle()"
+            :disabled="!canObserveAntiparticle"
+            :class="{ 'disabled': !canObserveAntiparticle }"
+          >
+            Observer Antiparticule
+          </button>
+      </div>
+
     </div>
 
     <div v-if="lastObservation" class="observation-result">
       <h3>Dernière Observation</h3>
       <div class="particle-card">
-        <span class="particle-name">{{ lastObservation.particle.name }}</span>
-        <span class="particle-generation">Génération {{ lastObservation.particle.generation }}</span>
-        <span class="observation-cost">Coût: {{ lastObservation.cost }} générateurs de rang {{ lastObservation.rank }}</span>
+        <span class="particle-name">{{ lastObservation.item.name }}</span>
+        <span class="particle-generation">Génération {{ lastObservation.item.generation }}</span>
+        <span class="observation-cost">Coût: {{ lastObservation.cost }} {{ lastObservation.isAntiparticle ? 'Antipotentiel' : `générateurs de rang ${lastObservation.rank}` }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, inject } from 'vue';
 import { ObservationService } from '../services/ObservationService';
+import { PrestigeService } from '../services/PrestigeService';
+import { eventBus } from '../App.vue';
 
 export default {
   name: 'ParticleObservation',
@@ -61,57 +86,94 @@ export default {
     }
   },
   setup(props, { emit }) {
+    const gameState = inject('gameState');
     const observationService = new ObservationService();
-    const lastObservation = ref(null);
+    const prestigeService = new PrestigeService();
 
-    const getObservationCost = (rank) => {
-      return props.isDebugMode ? 0 : observationService.getObservationCost(rank);
-    };
+    const lastObservation = ref(null);
+    
+    const currentAntipotential = computed(() => gameState?.antipotential || 0);
+    const areAntiparticlesUnlocked = computed(() => prestigeService.isAntiparticlesUnlocked(gameState));
 
     const getGeneratorCount = (rank) => {
       const generator = props.generators.find(g => g.rank === rank);
       return generator ? generator.count : 0;
     };
 
-    const canObserve = (rank) => {
-      if (props.isDebugMode) return true;
-
+    const canObserveParticle = (rank) => {
       const generator = props.generators.find(g => g.rank === rank);
-      if (!generator) return false;
+      return generator ? observationService.canObserveParticle(rank, generator.count, gameState) : false;
+    };
 
-      const hasEnoughGenerators = observationService.canObserve(rank, generator.count);
+    const getParticleObservationCostDisplay = () => {
+        return observationService.getParticleObservationCost();
+    };
 
-      if (rank < 3) {
-        const nextRank = rank + 1;
-        const nextGenerator = props.generators.find(g => g.rank === nextRank);
-        const hasNextGenerator = nextGenerator && nextGenerator.count > 0;
-        return hasEnoughGenerators && hasNextGenerator;
-      } else {
-        return hasEnoughGenerators;
+    const canObserveAntiparticle = computed(() => {
+        return observationService.canObserveAntiparticle(gameState, prestigeService);
+    });
+
+     const getAntiparticleObservationCostDisplay = () => {
+        return observationService.getAntiparticleObservationCost(prestigeService);
+    };
+
+    const observeParticle = (rank) => {
+      const generator = props.generators.find(g => g.rank === rank);
+      if (generator && canObserveParticle(rank)) {
+        try {
+          const observationResult = observationService.observe(gameState, prestigeService, false, rank, generator.count);
+          lastObservation.value = { ...observationResult, rank };
+
+          generator.count -= observationResult.cost;
+
+          emit('particle-observed', { particle: observationResult.item, rank, cost: observationResult.cost });
+
+        } catch (error) {
+          console.error('Error observing particle:', error);
+        }
       }
     };
 
-    const observe = (rank) => {
-      try {
-        const result = observationService.observe(rank);
-        lastObservation.value = { ...result, rank };
-        
-        emit('particle-observed', {
-          particle: result.particle,
-          rank: rank,
-          cost: props.isDebugMode ? 0 : result.cost
-        });
-      } catch (error) {
-        console.error('Erreur lors de l\'observation:', error);
+    const observeAntiparticle = () => {
+        if (canObserveAntiparticle.value) {
+            try {
+                const observationResult = observationService.observe(gameState, prestigeService, true);
+                 lastObservation.value = observationResult;
+
+                 emit('particle-observed', { particle: observationResult.item, isAntiparticle: true, cost: observationResult.cost });
+
+            } catch (error) {
+                 console.error('Error observing antiparticle:', error);
+            }
+        }
+    };
+
+    const formatNumber = (num) => {
+      if (num === undefined || num === null) return '0';
+       if (num >= 1e9) {
+        return (num / 1e9).toFixed(2) + 'G';
       }
+      if (num >= 1e6) {
+        return (num / 1e6).toFixed(2) + 'M';
+      }
+      if (num >= 1000) {
+        return (num / 1000).toFixed(2) + 'K';
+      }
+      return Math.floor(num).toString();
     };
 
     return {
-      getObservationCost,
+      lastObservation,
       getGeneratorCount,
-      canObserve,
-      observe,
-      lastObservation
+      canObserveParticle,
+      getParticleObservationCostDisplay,
+      observeParticle,
+      currentAntipotential,
+      areAntiparticlesUnlocked,
+      canObserveAntiparticle,
+      getAntiparticleObservationCostDisplay,
+      observeAntiparticle,
+      formatNumber
     };
   }
 };
@@ -119,10 +181,10 @@ export default {
 
 <style scoped>
 .observation-panel {
-  background: #2a2a4a;
-  border-radius: 8px;
   padding: 15px;
-  margin-bottom: 15px;
+  background: #1a1a2e;
+  color: #e6e6e6;
+  border-radius: 8px;
 }
 
 .observation-panel h2 {
@@ -140,7 +202,8 @@ export default {
   margin-top: 10px;
 }
 
-.observation-rank {
+.observation-rank,
+.observation-antiparticle {
   background: #1a1a2e;
   border-radius: 6px;
   padding: 10px;
@@ -149,7 +212,8 @@ export default {
   flex-direction: column;
 }
 
-.observation-rank h3 {
+.observation-rank h3,
+.observation-antiparticle h3 {
     margin-top: 0;
     margin-bottom: 10px;
     color: #e94560;
@@ -171,7 +235,8 @@ export default {
   font-weight: bold;
 }
 
-.generator-count {
+.generator-count,
+.antipotential-count {
   color: #00ff9d;
 }
 

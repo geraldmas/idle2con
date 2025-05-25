@@ -12,6 +12,10 @@ export class ParticleFusion {
 
     canFuseParticles(type) {
         const particles = this.particles.filter(p => p.type === type);
+        // Désactiver la fusion des particules de génération 3
+        if (particles.length > 0 && particles[0].generation === 3) {
+            return false;
+        }
         return particles.length >= 3;
     }
 
