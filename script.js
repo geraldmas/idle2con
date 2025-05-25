@@ -662,62 +662,48 @@ function buyGenerator(generatorId) {
         numToBuyRaw = gameData.currentBuyMultiplier;
     }
 
-    let numToBuy;
+    let numToBuy; // This will be our Decimal quantity
+
     if (numToBuyRaw instanceof Decimal) {
         numToBuy = numToBuyRaw;
     } else {
-        let numericValue = Number(numToBuyRaw);
-        if (isNaN(numericValue)) {
-            console.warn(`Invalid value for numToBuyRaw: ${numToBuyRaw}. Defaulting to 1.`);
-            numericValue = 1;
+        // numToBuyRaw is a JS number (1, 10, 100) or could be something else if logic changes
+        try {
+            // Attempt to convert to Decimal. This handles numbers and valid string representations.
+            let numericValue = Number(numToBuyRaw); // Ensure it's a number first if it might be non-numeric string
+            if (isNaN(numericValue)) {
+                // If currentBuyMultiplier was something unexpected (not 'MAX' and not a direct number)
+                console.warn(`Invalid non-numeric value for buy multiplier: ${numToBuyRaw}. Defaulting to 1.`);
+                numericValue = 1;
+            }
+            numToBuy = new Decimal(numericValue);
+        } catch (e) {
+            // Catch errors from Decimal constructor if input is truly problematic
+            console.warn(`Error converting buy multiplier to Decimal: ${numToBuyRaw}. Error: ${e}. Defaulting to 1.`);
+            numToBuy = new Decimal(1);
         }
-        numToBuy = new Decimal(numericValue);
     }
 
     if (numToBuy.isZero()) {
-        console.log("Cannot buy 0 units.");
+        // console.log("Cannot buy 0 units."); // This log can be reactivated if desired
         return;
     }
     
-    // Handle 'MAX' buy amount, especially with debugFreePurchases
-    if (numToBuyRaw.isInfinite()) { // numToBuyRaw is the result of calculateMaxBuy
+    // Handle cases where numToBuy (derived from 'MAX' or specific number) might be infinite
+    // This is the corrected line, using numToBuy which is guaranteed to be a Decimal.
+    if (numToBuy.isInfinite()) { 
         if (gameData.debugFreePurchases) {
             numToBuy = new Decimal(1000); // Cap for debug free purchases if calculated max is infinite
             console.log("Debug Free Purchases ON: Max buy is infinite, capping to 1000.");
         } else {
             // Not debug mode, but calculated max is infinite (e.g., cost is 0 and M=1, or M < 1 making cost decrease)
-            // This could be genuinely free items.
             numToBuy = new Decimal(1000); // Cap genuinely infinite purchases too
             console.log("Max buy is infinite (e.g., free item), capping to 1000.");
         }
-    } else {
-        // numToBuyRaw is finite, or it's a specific number like 1, 10, 100
-        // Ensure numToBuy is a Decimal if it came from currentBuyMultiplier (1, 10, 100)
-        if (!(numToBuyRaw instanceof Decimal)) {
-            numToBuy = new Decimal(numToBuyRaw);
-        } else {
-            numToBuy = numToBuyRaw; // Already a Decimal from calculateMaxBuy
-        }
     }
-    
-    // Additional check if numToBuy ended up non-Decimal for some reason (e.g. from non-'MAX' currentBuyMultiplier that wasn't converted)
-    if (!(numToBuy instanceof Decimal)) {
-        try {
-            numToBuy = new Decimal(numToBuy);
-        } catch (e) {
-            console.warn(`Could not convert numToBuy to Decimal. Value: ${numToBuy}. Defaulting to 1.`);
-            numToBuy = new Decimal(1);
-        }
-    }
-
-
-    if (numToBuy.isZero()) {
-        // console.log("Cannot buy 0 units."); // Already handled by calculateMaxBuy returning 0 if cannot afford
-        return;
-    }
-    // The original check for numToBuy.isInfinite() might still be relevant if calculateMaxBuy returned Infinity
-    // and somehow the capping above was bypassed or currentBuyMultiplier was set to Infinity directly.
-    // However, the logic above should now handle it.
+    // The 'else' block that was here, along with the subsequent 'Additional check if numToBuy ended up non-Decimal'
+    // are removed as numToBuy is now consistently a Decimal by this point, or the function would have returned if it's zero.
+    // Any invalid input to new Decimal() during numToBuy initialization would be caught and defaulted.
 
     let totalUnitsBought = new Decimal(0);
     for (let i = new Decimal(0); i.lt(numToBuy); i = i.add(1)) {
