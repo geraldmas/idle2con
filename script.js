@@ -674,10 +674,26 @@ function buyGenerator(generatorId) {
         numToBuy = new Decimal(numericValue);
     }
 
+    console.log('[DEBUG] buyGenerator: Checking numToBuy state before use.');
+    console.log('[DEBUG] typeof numToBuy:', typeof numToBuy);
+    console.log('[DEBUG] numToBuy instanceof Decimal:', numToBuy instanceof Decimal);
+    if (numToBuy && typeof numToBuy === 'object') {
+        console.log('[DEBUG] numToBuy.constructor.name:', numToBuy.constructor ? numToBuy.constructor.name : 'N/A');
+        console.log('[DEBUG] Object.prototype.hasOwnProperty.call(numToBuy, "isInfinite"):', Object.prototype.hasOwnProperty.call(numToBuy, 'isInfinite'));
+        console.log('[DEBUG] "isInfinite" in numToBuy (check prototype chain):', "isInfinite" in numToBuy);
+    }
+    console.log('[DEBUG] typeof Decimal.prototype.isInfinite:', typeof Decimal.prototype.isInfinite);
+    try {
+        console.log('[DEBUG] numToBuy.toString():', numToBuy.toString());
+    } catch (e) {
+        console.log('[DEBUG] numToBuy.toString() failed:', e.message);
+    }
+
     if (numToBuy.isZero()) {
         console.log("Cannot buy 0 units.");
         return;
     }
+
     
     // Handle 'MAX' buy amount, especially with debugFreePurchases
     if (numToBuyRaw.isInfinite()) { // numToBuyRaw is the result of calculateMaxBuy
