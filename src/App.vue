@@ -21,9 +21,12 @@
             <span class="resource-name">{{ resource.name }}</span>
             <span class="resource-value">{{ formatNumber(resource.getValue()) }}</span>
             <span v-if="resource.name === 'Potentiel'" class="resource-details">
-              (N * a * dt /s)
-              <br>
-              (N: {{ Math.floor(resource.generators) }}, a: {{ formatNumber(resource.baseProduction, 3) }}, dt: {{ formatNumber(TickService.getDt(), 3) }})
+              <span>Formule: {{ dynamicFormulaText }}</span><br>
+              <span>(N: {{ formatNumber(Math.floor(gen1?.count || 0), 0) }}, a: {{ baseProductionDisplay }}, dt: {{ dtDisplay }})</span>
+              <template v-if="(gen1 && gen1.getMilestoneBonus() > 1) || (gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1">
+                <br><span>(</span><template v-if="gen1 && gen1.getMilestoneBonus() > 1">Bonus MS: {{ milestoneBonusDisplay }}</template><template v-if="(gen1 && gen1.getMilestoneBonus() > 1) && (gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1">, </template><template v-if="(gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1">Bonus AP: {{ antiparticleMultiplierDisplay }}</template><span>)</span>
+              </template>
+              <br><span>Prod. par tick: {{ actualCalculatedProduction }}</span>
             </span>
             <span v-if="resource.name === 'États' && resource.nextStateMilestone !== null" class="resource-next-milestone">
               Prochain état à {{ formatNumber(resource.nextStateMilestone) }} Potentiel
@@ -53,7 +56,6 @@
 
         <!-- Sous-section Obtention de Particules -->
         <div class="subsection observation-subsection">
-          <h3>Obtention de Particules</h3>
           <ParticleObservation
             :generators="gameState.generators"
             :is-debug-mode="isDebugEnabled"
@@ -682,10 +684,10 @@ body {
 }
 
 .resource-details {
-  font-size: 0.75em; /* Reduced font-size */
+  font-size: 0.75em; /* Maintained reduced font-size */
   color: #a9b3c1;
   margin-left: 0; /* Removed margin, will be child of flex container */
-  line-height: 1.4; /* Reduced line-height */
+  line-height: 1.2; /* Further reduced line-height for compactness */
   width: 100%; /* Take full width for details block */
   margin-top: 4px; /* Add a small top margin */
 }
@@ -746,6 +748,11 @@ body {
   .resource-details, .resource-next-milestone {
     margin-left: 0;
     margin-top: 5px;
+  }
+  /* Specific adjustments for Potentiel formula display on small screens */
+  .resources-panel .resource .resource-details {
+    line-height: 1.3; /* Slightly more space for readability */
+    word-break: break-word; /* Prevent overflow from long unbroken strings */
   }
 }
 

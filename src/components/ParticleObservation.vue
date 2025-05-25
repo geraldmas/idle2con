@@ -1,6 +1,6 @@
 <template>
   <div class="observation-panel">
-    <h2>Observation Quantique</h2>
+    <h3>Observation Quantique</h3>
     
     <div class="observation-controls">
       <!-- Contrôles pour observer les particules normales -->
@@ -181,18 +181,20 @@ export default {
 
 <style scoped>
 .observation-panel {
-  padding: 10px; /* Reduced padding */
+  padding: 0; /* Removed padding, outer .subsection in App.vue handles it */
   background: #1a1a2e;
   color: #e6e6e6;
-  border-radius: 8px;
+  /* border-radius: 8px; No longer needed if padding is 0 and it fills subsection */
 }
 
-.observation-panel h2 {
+/* Updated to h3 and styled like .subsection h3 from App.vue */
+.observation-panel h3:first-of-type { /* Target only the main title */
     margin-top: 0;
-    color: #00ff9d;
-    border-bottom: 1px solid #3a3a5a;
-    padding-bottom: 8px; /* Reduced padding-bottom */
-    margin-bottom: 10px; /* Reduced margin-bottom */
+    color: #e94560; /* Match App.vue's .subsection h3 */
+    border-bottom: 1px solid #0f3460; /* Match App.vue's .subsection h3 */
+    padding-bottom: 6px; /* Match App.vue's .subsection h3 */
+    margin-bottom: 10px; /* Match App.vue's .subsection h3 */
+    font-size: 1.15em; /* Explicit font size */
 }
 
 .observation-controls {
@@ -212,12 +214,13 @@ export default {
   flex-direction: column;
 }
 
-.observation-rank h3,
+.observation-rank h3, /* These are sub-headings within the component */
 .observation-antiparticle h3 {
     margin-top: 0;
     margin-bottom: 8px; /* Reduced margin-bottom */
-    color: #e94560;
+    color: #e94560; /* This color is fine for these sub-headings */
     font-size: 1.05em; /* Reduced font-size */
+    /* No border for these sub-headings */
 }
 
 .observation-info {

@@ -1,6 +1,6 @@
 <template>
   <div class="particle-collection">
-    <h2>Collection de Particules</h2>
+    <h3>Collection de Particules</h3> 
     
     <div class="total-effects-summary">
       <div class="effect-category">
@@ -192,25 +192,35 @@ export default {
 
 <style scoped>
 .particle-collection {
-  padding: 10px; /* Reduced padding */
+  padding: 0; /* Removed padding, outer .subsection in App.vue handles it */
   background: #1a1a2e;
   color: #e6e6e6;
-  border-radius: 8px;
+  /* border-radius: 8px; /* No longer needed if padding is 0 */
+}
+
+/* Style the h3 title to match .subsection h3 from App.vue */
+.particle-collection > h3:first-of-type {
+  color: #e94560;
+  margin-top: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #0f3460;
+  padding-bottom: 6px;
+  font-size: 1.15em; /* Consistent with other subsection h3 */
 }
 
 .total-effects-summary {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 8px;
-  padding: 10px; /* Reduced padding */
-  margin-bottom: 15px; /* Reduced margin-bottom */
+  padding: 8px; /* Further Reduced padding */
+  margin-bottom: 10px; /* Further Reduced margin-bottom */
 }
 
 .effect-category {
   display: flex;
   justify-content: space-between;
-  margin: 4px 0; /* Reduced margin */
-  font-size: 0.9em; /* Reduced font-size */
+  margin: 3px 0; /* Further Reduced margin */
+  font-size: 0.9em; 
 }
 
 .effect-category .label {
@@ -225,21 +235,21 @@ export default {
 
 .particles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* Reduced minmax */
-  gap: 8px; /* Reduced gap */
-  margin-top: 8px; /* Reduced margin-top */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Further Reduced minmax */
+  gap: 6px; /* Further Reduced gap */
+  margin-top: 8px; 
 }
 
 .particle-card {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 8px;
-  padding: 8px; /* Reduced padding */
+  padding: 8px; 
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   position: relative;
-  min-height: 110px; /* Reduced min-height */
+  min-height: 100px; /* Further Reduced min-height */
 }
 
 .particle-card:hover {
@@ -251,9 +261,9 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* Reduced margin */
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px; /* Reduced gap */
 }
 
 .particle-header h3 {
@@ -289,47 +299,47 @@ export default {
 }
 
 .particle-details {
-  margin: 6px 0; /* Reduced margin */
+  margin: 4px 0; /* Further Reduced margin */
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px; /* Reduced gap */
+  gap: 3px; /* Further Reduced gap */
 }
 
 .effect, .total-effect {
   display: flex;
   flex-direction: column;
-  gap: 2px; /* Retained gap */
-  font-size: 0.85em; /* Reduced font-size */
+  gap: 2px; 
+  font-size: 0.8em; /* Further Reduced font-size */
 }
 
 .effect .label, .total-effect .label {
   color: #8b8b8b;
-  font-size: 0.85em; /* Reduced font-size to match parent */
+  font-size: 0.8em; /* Further Reduced font-size to match parent */
 }
 
 .effect .value, .total-effect .value {
   color: #e6e6e6;
   font-family: 'Roboto Mono', monospace;
   word-break: break-word;
-  line-height: 1.3;
+  line-height: 1.2; /* Reduced line-height */
 }
 
 .particle-actions {
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 6px; /* Reduced padding-top */
 }
 
 .fuse-button {
   width: 100%;
-  padding: 5px; /* Reduced padding */
+  padding: 4px; /* Further Reduced padding */
   background: #e94560;
   border: none;
   border-radius: 4px;
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 0.85em; /* Reduced font-size */
+  font-size: 0.8em; /* Further Reduced font-size */
   white-space: nowrap;
 }
 

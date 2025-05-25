@@ -2,36 +2,46 @@
   <div class="generator" :class="{ 'locked': !isUnlocked }">
     <div class="generator-header">
       <h4>{{ name }}</h4>
-      <span class="generator-count">{{ formatNumber(count) }}</span>
+      <!-- Count is moved below -->
     </div>
     
     <div class="generator-info">
-      <div class="production">
-        <span class="label">Production:</span>
-        <span class="value">+{{ formatNumber(totalProduction) }}/s</span>
-      </div>
-      <div class="production-per-generator">
-        <span class="label">Production par générateur:</span>
-        <span class="value">+{{ formatNumber(productionPerGenerator) }}/s</span>
-      </div>
-      <div class="cost">
-        <span class="label">Coût:</span>
-        <span class="value">
-          {{ formatNumber(stateCost) }} États
-          <span v-if="generatorCost > 0">+ {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span>
-        </span>
-      </div>
-      <div class="milestones" v-if="isUnlocked">
-        <div class="milestone-progress">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: `${milestoneProgress * 100}%` }"></div>
-          </div>
-          <span class="milestone-text">
-            Prochain palier à {{ formatNumber(nextMilestone) }} (x{{ formatNumber(milestoneBonus) }} production)
+      <div class="generator-main-stats">
+        <div class="stat-item stat-count">
+          <span class="label">Possédés:</span>
+          <span class="value main-count-value">{{ formatNumber(count, 0) }}</span>
+        </div>
+        <div class="stat-item stat-cost">
+          <span class="label">Coût:</span>
+          <span class="value">
+            {{ formatNumber(stateCost) }} États
+            <span v-if="generatorCost > 0"><br>+ {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span>
           </span>
         </div>
+      </div>
+
+      <div class="production">
+        <span class="label">Production Totale:</span>
+        <span class="value prod-value">+{{ formatNumber(totalProduction) }}/s</span>
+      </div>
+      <div class="production-per-generator">
+        <span class="label">Par Générateur:</span>
+        <span class="value prod-value">+{{ formatNumber(productionPerGenerator) }}/s</span>
+      </div>
+      
+      <div class="milestones" v-if="isUnlocked">
+        <div class="milestone-progress">
+          <div class="milestone-progress-display">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: `${milestoneProgress * 100}%` }"></div>
+            </div>
+            <span class="milestone-text">
+              Prochain: {{ formatNumber(nextMilestone) }} (x{{ formatNumber(milestoneBonus) }})
+            </span>
+          </div>
+        </div>
         <div class="reached-milestones" v-if="reachedMilestones.length > 0">
-          <span class="label">Paliers atteints:</span>
+          <span class="label">Paliers (x2):</span>
           <span class="value">{{ reachedMilestones.join(', ') }}</span>
         </div>
       </div>
@@ -107,18 +117,18 @@ export default {
       return '';
     });
 
-    const formatNumber = (num) => {
+    const formatNumber = (num, decimals = 2) => { // Added decimals parameter
        if (num === undefined || num === null) return '0.00';
        if (num >= 1e9) {
-        return (num / 1e9).toFixed(2) + 'G';
+        return (num / 1e9).toFixed(decimals) + 'G';
       }
       if (num >= 1e6) {
-        return (num / 1e6).toFixed(2) + 'M';
+        return (num / 1e6).toFixed(decimals) + 'M';
       }
       if (num >= 1000) {
-        return (num / 1000).toFixed(2) + 'K';
+        return (num / 1000).toFixed(decimals) + 'K';
       }
-      return num.toFixed(2);
+      return num.toFixed(decimals);
     };
 
     const buyGenerator = () => {
@@ -175,56 +185,77 @@ export default {
 
 .generator-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* Title to the left, (formerly count to the right) */
   align-items: center;
-  margin-bottom: 8px; /* Reduced margin-bottom */
+  margin-bottom: 6px; /* Slightly reduced margin */
 }
 
 .generator-header h4 {
   color: #00ff9d;
   margin: 0;
-  font-size: 1.1em; /* Reduced font-size */
+  font-size: 1.1em; 
 }
 
-.generator-count {
-  background: #2a2a4a;
-  color: #ff9d00;
-  padding: 3px 6px; /* Reduced padding */
-  border-radius: 4px;
-  font-family: 'Roboto Mono', monospace;
-  font-size: 0.9em; /* Reduced font-size */
-}
+/* Count is no longer in header */
+/* .generator-count { ... } */
 
 .generator-info {
-  margin-bottom: 10px; /* Reduced margin-bottom */
-  flex-grow: 1; /* Allow info to take available space if generator has fixed height */
+  margin-bottom: 8px; /* Slightly reduced margin */
+  flex-grow: 1; 
 }
 
-.production, .cost, .production-per-generator {
+.generator-main-stats {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px; /* Reduced margin-bottom */
+  align-items: flex-start; /* Align to top in case cost wraps */
+  margin-bottom: 6px; /* Space below this row */
 }
 
-.production-per-generator {
-  font-size: 0.85em; /* Reduced font-size */
-  color: #888; /* Retained color for de-emphasis */
+.stat-item {
+  display: flex;
+  flex-direction: column; /* Label on top of value */
+  align-items: flex-start;
 }
-
-.label {
-  color: #888; /* Retained color */
-  margin-right: 5px; /* Added margin for separation */
+.stat-item .label {
+  font-size: 0.8em;
+  color: #888;
+  margin-bottom: 1px;
 }
-
-.value {
-  color: #e6e6e6;
+.stat-item .value {
   font-family: 'Roboto Mono', monospace;
-  filter: none;
+  font-size: 0.95em;
+  font-weight: 600; /* Make values a bit bolder */
+}
+.stat-cost {
+  align-items: flex-end; /* Align cost to the right */
+}
+.stat-cost .value {
+  text-align: right;
+}
+.main-count-value {
+  color: #ff9d00; /* Highlight count value */
 }
 
-.cost .value {
+
+.production, .production-per-generator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px; /* Reduced margin */
+  font-size: 0.9em; /* Base size for production lines */
+}
+.production .label, .production-per-generator .label {
+  margin-right: 5px;
+  color: #888;
+}
+.production .value.prod-value, .production-per-generator .value.prod-value {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1em; /* Relative to parent's 0.9em */
   color: #e6e6e6;
 }
+.production-per-generator {
+  font-size: 0.8em; /* Further reduced for secondary prod info */
+}
+
 
 .buy-button {
   width: 100%;
@@ -257,22 +288,28 @@ export default {
 }
 
 .milestones {
-  margin-top: 8px; /* Reduced margin-top */
-  padding-top: 8px; /* Reduced padding-top */
+  margin-top: 6px; /* Reduced margin */
+  padding-top: 6px; /* Reduced padding */
   border-top: 1px solid #3a3a5a;
 }
 
 .milestone-progress {
-  margin-bottom: 6px; /* Reduced margin-bottom */
+  margin-bottom: 4px; /* Reduced margin */
+}
+
+.milestone-progress-display {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Gap between bar and text */
 }
 
 .progress-bar {
-  width: 100%;
-  height: 6px; /* Reduced height */
+  flex-grow: 1; /* Allow bar to take space */
+  height: 6px; 
   background: #2a2a4a;
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 3px; /* Reduced margin-bottom */
+  /* margin-bottom: 3px; /* Removed, handled by gap in flex container */
 }
 
 .progress-fill {
@@ -282,16 +319,39 @@ export default {
 }
 
 .milestone-text {
-  font-size: 0.85em; /* Reduced font-size */
+  font-size: 0.8em; /* Reduced font-size */
   color: #00ff9d;
+  flex-shrink: 1; /* Allow text to shrink if needed */
+  text-align: right;
 }
 
 .reached-milestones {
-  font-size: 0.85em; /* Reduced font-size */
+  font-size: 0.8em; /* Reduced font-size */
   color: #ff9d00;
+  line-height: 1.3; /* Compact line height for list */
 }
 
 .reached-milestones .label {
   margin-right: 5px;
+}
+
+@media (max-width: 420px) { /* Breakpoint for very narrow screens */
+  .generator-main-stats {
+    flex-direction: column;
+    align-items: flex-start; /* Align items to the start (left) */
+    gap: 4px; /* Add some gap between stacked items */
+  }
+
+  .stat-item {
+    width: 100%; /* Allow stat items to take full width if needed */
+  }
+
+  .stat-cost {
+    align-items: flex-start; /* Ensure cost section aligns to start */
+  }
+
+  .stat-cost .value {
+    text-align: left; /* Align cost value to left */
+  }
 }
 </style> 
