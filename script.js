@@ -1,6 +1,38 @@
 // script.js
 
-// Main game data object
+/**
+ * @file script.js - Main JavaScript file for the incremental game.
+ * Handles game logic, data management, UI updates, and player interactions.
+ */
+
+/**
+ * @typedef {Object} Generator
+ * @property {number} id - Unique identifier for the generator.
+ * @property {string} name - Display name of the generator.
+ * @property {number} tier - Tier of the generator, affecting its position and unlock conditions.
+ * @property {Decimal} count - Number of this generator owned by the player.
+ * @property {Decimal} productionPerSecond - Amount of resource or other generator produced per second by one unit.
+ * @property {string} [producesResource] - Special keyword ("baseCurrency") if it produces the base game currency.
+ * @property {number} [producesGeneratorId] - ID of another generator this generator produces.
+ * @property {Decimal} baseCost - Initial cost of the first generator.
+ * @property {Decimal} currentCost - Current cost to buy one unit of this generator.
+ * @property {Decimal} costMultiplier - Factor by which the cost increases after each purchase.
+ * @property {boolean} isUnlocked - Whether the player can see and buy this generator.
+ * @property {string} [resourceCostName] - Name of the resource used to buy this generator (e.g., "JuLs").
+ */
+
+/**
+ * @global
+ * @type {Object} gameData
+ * @description Main object storing the entire game state.
+ * @property {Decimal} baseCurrency - The primary currency of the game (e.g., "JuLs").
+ * @property {string} baseCurrencyName - The display name for the base currency.
+ * @property {Array<Generator>} generators - Array of generator objects, each defining a way to produce resources or other generators.
+ * @property {number} lastUpdate - Timestamp of the last game loop execution, used for calculating offline progress and time deltas.
+ * @property {boolean} debugFreePurchases - Flag to enable/disable free purchases for debugging.
+ * @property {number|string} currentBuyMultiplier - The currently selected multiplier for purchases (1, 10, 100, or 'MAX').
+ * @property {Array<number|string>} buyMultiplierOptions - Available options for the buy multiplier.
+ */
 let gameData = {
     baseCurrency: new Decimal(20), // This will be our "JuLs"
     baseCurrencyName: "JuLs", // Renamed from "Objects"
@@ -28,7 +60,10 @@ let gameData = {
             baseCost: new Decimal(100), // Cost in "JuLs"
             currentCost: new Decimal(100),
             costMultiplier: new Decimal(1.20),
-            isUnlocked: false // Will be unlocked later
+            isUnlocked: false, // Will be unlocked later
+            unlockRequirements: [
+                { type: "generatorCount", generatorId: 1, neededCount: new Decimal(5) }
+            ]
         },
         {
             id: 3,
@@ -41,7 +76,10 @@ let gameData = {
             baseCost: new Decimal(1e9), // 1 Billion JuLs
             currentCost: new Decimal(1e9),
             costMultiplier: new Decimal(1.25),
-            isUnlocked: false 
+            isUnlocked: false,
+            unlockRequirements: [
+                { type: "generatorCount", generatorId: 2, neededCount: new Decimal(25) }
+            ]
         },
         {
             id: 4,
@@ -54,7 +92,10 @@ let gameData = {
             baseCost: new Decimal("1e15"), // 1 Quadrillion JuLs
             currentCost: new Decimal("1e15"),
             costMultiplier: new Decimal(1.30),
-            isUnlocked: false
+            isUnlocked: false,
+            unlockRequirements: [
+                { type: "generatorCount", generatorId: 3, neededCount: new Decimal(25) }
+            ]
         }
         // Future generator tiers can be added here
     ],
@@ -66,17 +107,33 @@ let gameData = {
 
 console.log("Game data initialized:", gameData);
 
+/**
+ * Retrieves a generator object from the gameData.generators array by its ID.
+ * @param {number} id - The ID of the generator to retrieve.
+ * @returns {Generator|undefined} The generator object if found, otherwise undefined.
+ * @example
+ * const harvester = getGeneratorById(1);
+ * if (harvester) {
+ *   console.log(harvester.name); // "JuL Harvester"
+ * }
+ */
 function getGeneratorById(id) {
     return gameData.generators.find(gen => gen.id === id);
 }
 
+/**
+ * Updates the game state based on production from all active generators.
+ * Calculates the time elapsed since the last update and iterates through generators
+ * to add their production to the respective resources or lower-tier generators.
+ * This function is a core part of the game loop.
+ */
 function updateProduction() {
     const currentUpdateTime = Date.now();
-    const timeDelta = new Decimal((currentUpdateTime - gameData.lastUpdate) / 1000);
+    const timeDelta = new Decimal((currentUpdateTime - gameData.lastUpdate) / 1000); // Time delta in seconds
     // console.log(`updateProduction: timeDelta = ${timeDelta.toFixed(3)}s (lastUpdate: ${gameData.lastUpdate}, currentUpdateTime: ${currentUpdateTime})`);
     if (timeDelta.isNegative()) {
         console.warn(`updateProduction: Negative timeDelta (${timeDelta.toFixed(3)}s). This might indicate an issue with system time or lastUpdate resetting. Clamping to 0.`);
-        // timeDelta = new Decimal(0); // Option: clamp negative delta to prevent de-production
+        timeDelta = new Decimal(0); // Option: clamp negative delta to prevent de-production
     }
 
     for (let i = gameData.generators.length - 1; i >= 0; i--) {
@@ -108,23 +165,35 @@ function updateProduction() {
     }
 }
 
-// SUFFIXES array for large number abbreviations
+// SUFFIXES array for large number abbreviations.
 // Starts with standard K, M, B, T, then uses aa, ab, ac ... az, ba, bb ...
 const SUFFIXES = ['', 'K', 'M', 'B', 'T'];
 const letters = 'abcdefghijklmnopqrstuvwxyz';
-for (let i = 0; i < letters.length; i++) {
-    for (let j = 0; j < letters.length; j++) {
-        SUFFIXES.push(letters[i] + letters[j]);
+for (let i = 0; i < letters.length; i++) { // Loop for the first letter (a-z)
+    for (let j = 0; j < letters.length; j++) { // Loop for the second letter (a-z)
+        SUFFIXES.push(letters[i] + letters[j]); // Creates "aa", "ab", ..., "az", "ba", ...
     }
 }
 // This will generate: '', K, M, B, T, aa, ab, ..., az, ba, bb, ..., bz, ..., za, ..., zz
-// Total of 5 + 26*26 = 5 + 676 = 681 suffixes, handling up to 1000^680
+// Total of 5 (manual) + 26*26 (generated) = 5 + 676 = 681 suffixes.
+// This setup can handle numbers up to approximately 1000^680.
 
-const SPEED_OF_LIGHT_MPS = new Decimal(299792458); // meters per second
+const SPEED_OF_LIGHT_MPS = new Decimal(299792458); // meters per second, used for thematic calculations.
 
+/**
+ * Formats a number (Decimal or otherwise) into a human-readable string with suffixes for large numbers.
+ * Handles Decimals, converts other types to Decimal, and includes specific formatting for small numbers,
+ * numbers less than 1000, and large numbers requiring scientific notation or suffixes.
+ * @param {Decimal|number|string} num - The number to format. If not a Decimal, it will be converted.
+ * @returns {string} The formatted number string (e.g., "1.23K", "10.00", "1.23e-4", "NaN", "Error").
+ * @example
+ * formatNumber(new Decimal(1234)); // "1.23K"
+ * formatNumber(0.00123); // "1.23e-4"
+ * formatNumber(10); // "10.00"
+ */
 function formatNumber(num) {
     if (!(num instanceof Decimal)) {
-        // Attempt to convert non-Decimal inputs, log error if conversion fails or results in NaN
+        // Attempt to convert non-Decimal inputs, log error if conversion fails or results in NaN.
         try {
             num = new Decimal(num);
             if (num.isNaN()) {
@@ -144,13 +213,11 @@ function formatNumber(num) {
     // Handle very small numbers (close to zero) with scientific notation if toFixed(2) would be 0.00
     // but only if the number is not actually zero.
     if (num.abs().lt(0.01) && !num.isZero()) {
-        // Check if toFixed(2) would result in "0.00" or "-0.00"
-        if (num.toFixed(2) === "0.00" || num.toFixed(2) === "-0.00") {
-            return num.toExponential(2); // e.g., 1.23e-4
-        }
+        return num.toExponential(2); // Always use exponential for abs(num) < 0.01 and non-zero
     }
     
     // For numbers with absolute value less than 1000, use toFixed(2) without abbreviation.
+    // This now applies to numbers >= 0.01 and < 1000.
     if (num.abs().lt(1000)) {
         return num.toFixed(2); // e.g., 123.45, -123.45, 0.01
     }
@@ -177,10 +244,16 @@ function formatNumber(num) {
     return sign + numToFormat.toFixed(2) + SUFFIXES[i];
 }
 
-const SAVE_KEY = "chaoticIdleGameSave";
+const SAVE_KEY = "chaoticIdleGameSave"; // Key used for storing game data in localStorage.
 
+/**
+ * Saves the current game state to localStorage.
+ * Converts Decimal objects to strings for serialization.
+ * Includes error handling for potential localStorage issues.
+ */
 function saveGame() {
     try {
+        // Create a deep copy of gameData suitable for JSON.stringify
         const serializableGameData = {
             baseCurrency: gameData.baseCurrency.toString(),
             baseCurrencyName: gameData.baseCurrencyName, // Already a string
@@ -208,6 +281,13 @@ function saveGame() {
     }
 }
 
+/**
+ * Loads game state from localStorage.
+ * Parses the saved JSON string and restores gameData.
+ * Converts string representations of Decimals back to Decimal objects.
+ * Handles cases where no save data is found or data is corrupted, defaulting to a fresh state.
+ * Merges saved generator data with default generator structures to accommodate game updates.
+ */
 function loadGame() {
     try {
         const savedDataString = localStorage.getItem(SAVE_KEY);
@@ -313,42 +393,56 @@ function loadGame() {
     }
 }
 
+/**
+ * Checks and applies unlock conditions for generators.
+ * Iterates through defined unlock logic (e.g., based on counts of other generators)
+ * and sets the `isUnlocked` flag on generators if their conditions are met.
+ * Logs unlocks to the console.
+ */
 function checkUnlocks() {
-    // Unlock Tier 2 Generator (Morphism Generator)
-    const tier2Gen = getGeneratorById(2);
-    if (tier2Gen && !tier2Gen.isUnlocked) {
-        const tier1Gen = getGeneratorById(1);
-        if (tier1Gen && tier1Gen.count.gte(5)) { // Condition: 5 JuL Harvesters
-            tier2Gen.isUnlocked = true;
-            console.log(tier2Gen.name + " Unlocked!");
-        }
-    }
+    gameData.generators.forEach(generator => {
+        if (!generator.isUnlocked && generator.unlockRequirements) {
+            let allReqsMet = true;
+            for (const req of generator.unlockRequirements) {
+                if (req.type === "generatorCount") {
+                    const sourceGenerator = getGeneratorById(req.generatorId);
+                    if (!sourceGenerator || sourceGenerator.count.lt(req.neededCount)) {
+                        allReqsMet = false;
+                        break; 
+                    }
+                }
+                // Future: Add checks for other requirement types here, e.g., "currencyAmount"
+                // else if (req.type === "currencyAmount") { ... }
+            }
 
-    // Unlock Tier 3 Generator (Efficiency Upgrade)
-    const tier3Gen = getGeneratorById(3);
-    if (tier3Gen && !tier3Gen.isUnlocked) {
-        const tier2GenForUnlock = getGeneratorById(2); 
-        if (tier2GenForUnlock && tier2GenForUnlock.count.gte(25)) { // Condition: 25 Collector Boosters
-            tier3Gen.isUnlocked = true;
-            console.log(tier3Gen.name + " Unlocked!");
+            if (allReqsMet) {
+                generator.isUnlocked = true;
+                console.log(generator.name + " Unlocked!");
+                // Optional: Trigger 'newly-unlocked' animation
+                const tierElement = document.getElementById(`generator-tier-${generator.id}`);
+                if (tierElement) {
+                    tierElement.classList.add('newly-unlocked');
+                    setTimeout(() => {
+                        tierElement.classList.remove('newly-unlocked');
+                    }, 700); // Duration of the animation in ms (must match CSS)
+                }
+            }
         }
-    }
-
-    // Unlock Tier 4 Generator (Hyperspace Funnel)
-    const tier4Gen = getGeneratorById(4);
-    if (tier4Gen && !tier4Gen.isUnlocked) {
-        const tier3GenForUnlock = getGeneratorById(3); 
-        if (tier3GenForUnlock && tier3GenForUnlock.count.gte(25)) { // Condition: 25 Efficiency Upgrades
-            tier4Gen.isUnlocked = true;
-            console.log(tier4Gen.name + " Unlocked!");
-        }
-    }
-    // Future unlock conditions can be added here
+    });
 }
 
+/**
+ * Calculates resource and generator production that occurred while the game was closed.
+ * Iterates through generators and calculates their total production over the given time delta.
+ * Updates `gameData.baseCurrency` and generator counts accordingly.
+ * @param {Decimal} timeDeltaSeconds - The time elapsed in seconds since the game was last saved/active.
+ * @example
+ * const offlineTime = new Decimal(3600); // 1 hour
+ * calculateOfflineProduction(offlineTime);
+ */
 function calculateOfflineProduction(timeDeltaSeconds) {
     // console.log(`calculateOfflineProduction called with timeDeltaSeconds: ${timeDeltaSeconds.toString()}`);
-    if (timeDeltaSeconds.isNegative() || timeDeltaSeconds.isZero()) return;
+    if (timeDeltaSeconds.isNegative() || timeDeltaSeconds.isZero()) return; // No production if time is zero or negative.
 
     // Create a snapshot of initial counts for logging or more complex calcs if needed later
     const initialCounts = { baseCurrency: gameData.baseCurrency };
@@ -391,6 +485,17 @@ function calculateOfflineProduction(timeDeltaSeconds) {
     });
 }
 
+/**
+ * Calculates the maximum number of a specific generator that can be bought with current resources.
+ * Uses a formula derived from the sum of a geometric series for cost calculation.
+ * Handles various edge cases like zero cost, cost multiplier of 1, or decreasing costs.
+ * @param {number} generatorId - The ID of the generator to calculate max buy for.
+ * @returns {Decimal} The maximum number of units that can be bought. Returns 0 if none can be afforded or generator is locked/invalid.
+ * @throws {Error} Can throw errors if Decimal operations encounter unexpected issues, though typically caught by Decimal.js.
+ * @example
+ * const maxHarvesters = calculateMaxBuy(1);
+ * console.log(`Can buy ${maxHarvesters} JuL Harvesters.`);
+ */
 function calculateMaxBuy(generatorId) {
     const generator = getGeneratorById(generatorId);
     if (!generator || !generator.isUnlocked) return new Decimal(0);
@@ -403,46 +508,142 @@ function calculateMaxBuy(generatorId) {
         return new Decimal(0);
     }
 
-    if (generator.costMultiplier.eq(1)) {
-        if (generator.currentCost.lte(0)) return new Decimal(Infinity); // Effectively infinite if free
-        return currentResource.div(generator.currentCost).floor();
-    }
-
-    if (generator.currentCost.lte(0) || generator.costMultiplier.lte(0)) {
-        if (generator.currentCost.eq(0)) return new Decimal(Infinity);
-        return new Decimal(0);
-    }
-    
-    // Geometric series sum for cost: C * (1 - M^k) / (1 - M) <= R
-    // (1 - M^k) / (1 - M) <= R/C
-    // 1 - M^k <= (R/C) * (1 - M)
-    // M^k >= 1 - (R/C) * (1 - M)
-    // k * log(M) >= log(1 - (R/C) * (1 - M))
-    // k >= log(1 - (R/C) * (1 - M)) / log(M)
-    // If 1 - M is negative (M > 1), then (R/C) * (1 - M) is negative.
-    // 1 - (negative value) is positive. So log is fine.
-    // log(M) is positive if M > 1.
-
-    const C = generator.currentCost;
-    const M = generator.costMultiplier;
-    const R = currentResource;
+    const C = new Decimal(generator.currentCost);
+    const M = new Decimal(generator.costMultiplier);
+    const R = new Decimal(currentResource);
 
     if (R.lt(C)) return new Decimal(0); // Cannot afford even one
 
-    // Simplified iterative approach for now, can be optimized with formula later if performance issues arise.
-    let tempCost = new Decimal(generator.currentCost);
-    let tempResource = new Decimal(currentResource);
-    let count = new Decimal(0);
-    while (tempResource.gte(tempCost)) {
-        tempResource = tempResource.sub(tempCost);
-        tempCost = tempCost.mul(M);
-        count = count.add(1);
-        if (count.gt(2000)) break; // Safety break
+    // Handle M = 1 case (cost does not increase)
+    if (M.eq(1)) {
+        if (C.lte(0)) return new Decimal(Infinity); // Free or negative cost means infinite buy with M=1
+        return R.div(C).floor();
     }
-    return count;
+    
+    // Handle cases where cost might be zero or multiplier is weird, though initial checks should catch some.
+    // If C is zero or negative, and M is not 1, it's tricky.
+    // If C <= 0 and M > 1 (increasing cost from 0), can buy 1 for free/gain, then cost increases.
+    // If C <= 0 and M < 1 (decreasing cost from 0), can buy infinite.
+    // The formula approach generally assumes C > 0 and M > 0. Let's stick to that for the formula.
+    // The initial R.lt(C) handles cases where C is positive and R is too low.
+    // If C is zero or negative, R.lt(C) might be false, allowing purchase.
+    if (C.lte(0)) { // If initial cost is zero or negative
+        // If M is also <= 1 (cost stays zero/negative or decreases), infinite buy.
+        // If M > 1 (cost increases from zero/negative), can effectively buy one for free/profit,
+        // then subsequent costs might become positive. The formula might not be best here.
+        // However, the problem asks for the formula, so we'll assume C > 0 for the main formula path.
+        // For C <= 0:
+        if (M.lte(1)) return new Decimal(Infinity); // Cost never increases positively
+        // If C is 0 and M > 1, first is free, next costs 0*M=0, etc. This should be infinite.
+        // This implies the iterative version was more robust for C=0.
+        // Let's refine: if C is 0, and M > 1, it implies infinite free items.
+        if (C.isZero()) return new Decimal(Infinity);
+        // If C is negative, this is an edge case not typical for this formula.
+        // For now, if C is negative and M > 1, it's complex. Let's return 1 as a fallback,
+        // assuming you get one and then the cost might become positive.
+        // This part needs careful thought if C can be negative.
+        // Assuming C is generally positive for the formula.
+        // The problem statement implies C, M, R are Decimals.
+    }
+
+
+    // Formula: k = floor(log(1 - (R * (M-1) / C) + 1) / log(M))
+    // More commonly written as: k = floor(log( (R*(M-1)/C) + 1 ) / log(M)) for M > 1
+    // Or derived from: R >= C * (M^k - 1) / (M - 1)  (sum of geometric series for total cost)
+    // M^k - 1 <= R * (M - 1) / C
+    // M^k <= (R * (M - 1) / C) + 1
+    // k * log(M) <= log((R * (M - 1) / C) + 1)
+    // k <= log((R * (M - 1) / C) + 1) / log(M)
+
+    // Check if M is less than or equal to 0 (invalid multiplier for this formula)
+    // or if M is 1 (already handled).
+    // The formula assumes M > 0 and M != 1.
+    // If M is between 0 and 1 (exclusive), costs decrease. This means player can buy more, potentially infinite if cost approaches 0.
+    if (M.lte(0)) return new Decimal(0); // Invalid multiplier for growth formula context
+
+    if (M.lt(1)) { // Cost decreases
+        // If cost decreases towards zero, potentially infinite.
+        // This scenario means the sum formula for increasing costs isn't directly applicable for "how many can I afford".
+        // If costs decrease, you can always afford the next one if you can afford the current one, until count is exhausted or cost becomes negligible.
+        // For simplicity, if M < 1 and C > 0, this is like an infinite geometric series if we were *receiving* money.
+        // This implies you can keep buying as long as you have resources for the current one, and the cost keeps dropping.
+        // This is effectively infinite if resources R are >= C.
+        if (R.gte(C)) return new Decimal(Infinity);
+        else return new Decimal(0);
+    }
+
+    // Now, M > 1, C > 0
+    // Value = (R * (M - 1) / C) + 1
+    const term = R.mul(M.sub(1)).div(C).add(1);
+
+    // If term is <= 0, log is not possible. This means cannot afford any or exactly one if term is 1.
+    // If term is 1 (meaning R*(M-1)/C is 0), then k <= log(1)/log(M) = 0. This means 0 items.
+    // This occurs if R=0 (already handled by R.lt(C) if C > 0).
+    // More likely, if R * (M-1) / C is very small (e.g. R is slightly more than C).
+    // If term is positive but less than M, then log(term) < log(M), so k would be < 1.
+    // Decimal.log(value, base) or use natural log: Decimal.ln(value).div(Decimal.ln(base))
+    
+    if (term.lte(0)) { // Should not happen if R >= C and M > 1, C > 0, because (M-1)>0, R/C >=1, so term >= M > 1.
+        return new Decimal(0); // Safety for log domain.
+    }
+    
+    // If term is less than M, and we expect M^k = term, then k < 1.
+    // log_M(term)
+    let count;
+    try {
+        // k = log_M(term)
+        count = Decimal.log(term, M);
+    } catch (e) {
+        // Fallback for potential issues with Decimal.log if base is too close to 1 or term is problematic
+        // This might happen if M is very close to 1, making log(M) very small.
+        // The original iterative approach is safer in such highly sensitive cases.
+        // For now, let's assume Decimal.log behaves well or try natural log.
+        if (M.ln().isZero()) { // M is 1, should have been caught
+            return R.div(C).floor();
+        }
+        if (term.ln().isNegative() && !term.isZero()) { // log of number between 0 and 1
+             // This implies R*(M-1)/C + 1 is between 0 and 1.
+             // (R*(M-1)/C) is between -1 and 0.
+             // This should not happen if R >= C, M > 1, C > 0.
+            return new Decimal(0);
+        }
+        try {
+            count = term.ln().div(M.ln());
+        } catch (e2) {
+            console.error("Error calculating max buy with logs:", e2);
+            // Fallback to iterative if formula fails catastrophically
+            let tempCost = new Decimal(C);
+            let tempResource = new Decimal(R);
+            let iterativeCount = new Decimal(0);
+            while (tempResource.gte(tempCost)) {
+                tempResource = tempResource.sub(tempCost);
+                tempCost = tempCost.mul(M);
+                iterativeCount = iterativeCount.add(1);
+                if (iterativeCount.gt(2500)) break; // Safety break, increased slightly
+            }
+            return iterativeCount;
+        }
+    }
+
+    if (count.isNaN() || count.isNegative()) {
+        // If result is NaN or negative, it implies an issue or 0 items.
+        return new Decimal(0);
+    }
+
+    return count.floor();
 }
 
-
+/**
+ * Handles the purchase of a specified number of generators.
+ * Determines the number to buy based on the current buy multiplier (1, 10, 100, or MAX).
+ * If 'MAX' is selected, it uses `calculateMaxBuy`.
+ * Deducts resources, updates generator count, and increases the cost for the next purchase.
+ * @param {number} generatorId - The ID of the generator to buy.
+ * @example
+ * buyGenerator(1); // Buys based on currentBuyMultiplier
+ * gameData.currentBuyMultiplier = 'MAX';
+ * buyGenerator(1); // Buys max possible
+ */
 function buyGenerator(generatorId) {
     const generator = getGeneratorById(generatorId);
     if (!generator) {
@@ -478,14 +679,45 @@ function buyGenerator(generatorId) {
         return;
     }
     
-    if (numToBuy.isInfinite() && generator.currentCost.isZero() && gameData.debugFreePurchases) {
-        numToBuy = new Decimal(1000);
-        console.log("Buying a large batch of free generators in debug mode.");
-    } else if (numToBuy.isInfinite()) {
-        console.log("Cannot determine a finite max buy amount for free items, limiting to 1000.");
-        numToBuy = new Decimal(1000);
+    // Handle 'MAX' buy amount, especially with debugFreePurchases
+    if (numToBuyRaw.isInfinite()) { // numToBuyRaw is the result of calculateMaxBuy
+        if (gameData.debugFreePurchases) {
+            numToBuy = new Decimal(1000); // Cap for debug free purchases if calculated max is infinite
+            console.log("Debug Free Purchases ON: Max buy is infinite, capping to 1000.");
+        } else {
+            // Not debug mode, but calculated max is infinite (e.g., cost is 0 and M=1, or M < 1 making cost decrease)
+            // This could be genuinely free items.
+            numToBuy = new Decimal(1000); // Cap genuinely infinite purchases too
+            console.log("Max buy is infinite (e.g., free item), capping to 1000.");
+        }
+    } else {
+        // numToBuyRaw is finite, or it's a specific number like 1, 10, 100
+        // Ensure numToBuy is a Decimal if it came from currentBuyMultiplier (1, 10, 100)
+        if (!(numToBuyRaw instanceof Decimal)) {
+            numToBuy = new Decimal(numToBuyRaw);
+        } else {
+            numToBuy = numToBuyRaw; // Already a Decimal from calculateMaxBuy
+        }
+    }
+    
+    // Additional check if numToBuy ended up non-Decimal for some reason (e.g. from non-'MAX' currentBuyMultiplier that wasn't converted)
+    if (!(numToBuy instanceof Decimal)) {
+        try {
+            numToBuy = new Decimal(numToBuy);
+        } catch (e) {
+            console.warn(`Could not convert numToBuy to Decimal. Value: ${numToBuy}. Defaulting to 1.`);
+            numToBuy = new Decimal(1);
+        }
     }
 
+
+    if (numToBuy.isZero()) {
+        // console.log("Cannot buy 0 units."); // Already handled by calculateMaxBuy returning 0 if cannot afford
+        return;
+    }
+    // The original check for numToBuy.isInfinite() might still be relevant if calculateMaxBuy returned Infinity
+    // and somehow the capping above was bypassed or currentBuyMultiplier was set to Infinity directly.
+    // However, the logic above should now handle it.
 
     let totalUnitsBought = new Decimal(0);
     for (let i = new Decimal(0); i.lt(numToBuy); i = i.add(1)) {
@@ -527,27 +759,28 @@ function buyGenerator(generatorId) {
 
     if (totalUnitsBought > 0) {
         console.log(`Bought ${totalUnitsBought} ${generator.name}(s).`);
-        if (generator.id === 1 && gameData.generators[0].count >= 5 && !getGeneratorById(2).isUnlocked) {
-            const tier2 = getGeneratorById(2);
-            if(tier2) {
-                tier2.isUnlocked = true; 
-                console.log(`${tier2.name} Unlocked!`);
-                const tier2Element = document.getElementById('generator-tier-2');
-                if (tier2Element) {
-                    tier2Element.classList.add('newly-unlocked');
-                    setTimeout(() => {
-                        tier2Element.classList.remove('newly-unlocked');
-                    }, 700); // Duration of the animation in ms
-                }
-            }
-        }
+        // The unlock animation is now primarily handled by checkUnlocks.
+        // The specific unlock logic tied to buying generator 1 causing tier 2 unlock
+        // is now generalized in checkUnlocks.
+        // We might still want a direct call to checkUnlocks here if a purchase could immediately trigger one.
+        // However, checkUnlocks is already in the gameLoop, so it will be caught.
+        // For immediate UI feedback on unlock due to a purchase, checkUnlocks might need to be called here.
+        // Let's rely on the game loop's checkUnlocks for now to keep buyGenerator cleaner.
+        
         // const generator is the one being bought/modified in buyGenerator's scope
         console.log(`buyGenerator: Finished purchase for ${generator.name}. New count: ${formatNumber(generator.count)}, New currentCost: ${formatNumber(generator.currentCost)}`);
-        updateUI();
+        updateUI(); // Update UI immediately after a purchase
+        // checkUnlocks(); // Optionally call here for immediate unlock feedback if not relying solely on gameLoop
     }
 }
 
-
+/**
+ * Dynamically creates and renders HTML elements for each generator in the UI.
+ * This function is called on initial page load and potentially after game updates
+ * that might change the set of available generators (though currently, generators are static).
+ * It populates the 'generators-section' div with tier-specific divs, titles, counts,
+ * production rates, and buy buttons.
+ */
 function renderGeneratorElements() {
     const generatorsSection = document.getElementById('generators-section');
     if (!generatorsSection) {
@@ -602,9 +835,15 @@ function renderGeneratorElements() {
     // console.log("Dynamic generator elements rendered.");
 }
 
+/**
+ * Updates all dynamic parts of the User Interface (UI) with current game data.
+ * This includes displaying the base currency count, generator counts, production rates,
+ * costs, and status (locked/unlocked). It also updates thematic elements like
+ * rapidity and ship speed. Called frequently by the game loop.
+ */
 function updateUI() {
     // console.log(`updateUI called. gameData.baseCurrency = ${formatNumber(gameData.baseCurrency)}`);
-    /* gameData.generators.forEach(gen => {
+    /* gameData.generators.forEach(gen => { // Example of past debug logging
         if(gen) {
              // console.log(`updateUI: Generator ID ${gen.id} (${gen.name}) count = ${formatNumber(gen.count)}`);
         } else {
@@ -625,6 +864,7 @@ function updateUI() {
     // Calculate and Display Rapidity & Ship Speed
     const rapidityElement = document.getElementById('current-rapidity');
     // Rapidity (φ): 1 JuL = 10^-9 units of Rapidity.
+    // This is a thematic calculation based on the game's lore/concept.
     let currentRapidity = gameData.baseCurrency.div(new Decimal("1e9"));
 
     if (rapidityElement) {
@@ -633,14 +873,18 @@ function updateUI() {
         console.error("updateUI: current-rapidity element NOT FOUND");
     }
 
-    // --- Define numericRapidity and vcRatio here ---
+    // --- Define numericRapidity and vcRatio here for ship speed calculations ---
+    // numericRapidity is the JavaScript number representation of currentRapidity (a Decimal).
+    // vcRatio is the velocity as a fraction of the speed of light (v/c), calculated using Math.tanh (hyperbolic tangent),
+    // a common formula in special relativity relating rapidity (φ) to v/c: v/c = tanh(φ).
     let numericRapidity;
     try {
-        numericRapidity = currentRapidity.toNumber();
+        numericRapidity = currentRapidity.toNumber(); // Convert Decimal to number for Math.tanh
     } catch (e) {
-        numericRapidity = Infinity;
+        // If currentRapidity is too large to convert to a JS number, it's effectively infinite for tanh.
+        numericRapidity = Infinity; 
     }
-    let vcRatio = Math.tanh(numericRapidity); // Calculate vcRatio once
+    let vcRatio = Math.tanh(numericRapidity); // Calculate v/c ratio once. tanh(Infinity) = 1.
 
     // --- Calculate and Display Ship Speed (v/c %) ---
     const speedElement = document.getElementById('ship-speed-vc');
@@ -757,9 +1001,17 @@ function updateUI() {
 }
 
 // Game Loop
+/**
+ * The main game loop, executed at a set interval (e.g., 10 times per second).
+ * Responsible for:
+ * 1. Updating production of resources and generators (`updateProduction`).
+ * 2. Checking for and applying any new unlocks (`checkUnlocks`).
+ * 3. Refreshing the UI with the latest game state (`updateUI`).
+ * 4. Updating `gameData.lastUpdate` to the current time.
+ */
 function gameLoop() {
     // console.log("gameLoop called"); // Log at the start of gameLoop
-    let now = Date.now();
+    let now = Date.now(); // Current timestamp
     updateProduction();
     checkUnlocks(); // Check for unlocks after production updates counts
     try {
@@ -779,7 +1031,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Offline Progress Calculation ---
     const now = Date.now();
-    // gameData.lastUpdate should be from the loaded game data or from a fresh start via loadGame()
+    // gameData.lastUpdate should be from the loaded game data or from a fresh start via loadGame().
+    // This calculates the duration the game was inactive.
     let timeDeltaOfflineInSeconds = new Decimal(now - gameData.lastUpdate).div(1000);
 
     if (timeDeltaOfflineInSeconds.lt(1) || timeDeltaOfflineInSeconds.isNegative()) {
@@ -791,17 +1044,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // const maxOfflineTimeSeconds = new Decimal(7 * 24 * 60 * 60); // 1 week
         // if (timeDeltaOfflineInSeconds.gt(maxOfflineTimeSeconds)) {
         //     console.warn(`Offline time was ${timeDeltaOfflineInSeconds.toFixed(0)}s, capped to ${maxOfflineTimeSeconds.toFixed(0)}s.`);
-        //     timeDeltaOfflineInSeconds = maxOfflineTimeSeconds;
+        //     timeDeltaOfflineInSeconds = maxOfflineTimeSeconds; // Example of capping max offline time.
         // }
         console.log(`Calculating offline progress for ${timeDeltaOfflineInSeconds.toFixed(0)} seconds.`);
         calculateOfflineProduction(timeDeltaOfflineInSeconds);
-        checkUnlocks(); // Check if any new generators were unlocked due to offline production
+        checkUnlocks(); // Check if any new generators were unlocked due to offline production.
         console.log("Offline progress calculation complete.");
     }
     
-    gameData.lastUpdate = now; // Set lastUpdate to current time AFTER offline calculations and BEFORE game loop starts
+    gameData.lastUpdate = now; // Set lastUpdate to current time AFTER offline calculations and BEFORE game loop starts.
     
-    updateUI(); // Update UI with the potentially loaded and offline-progressed data
+    updateUI(); // Update UI with the potentially loaded and offline-progressed data.
 
     // Setup game loop
     if (typeof gameLoopInterval !== 'undefined') { // Clear any existing interval (e.g. from HMR)
