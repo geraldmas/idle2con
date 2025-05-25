@@ -13,8 +13,20 @@
     </header>
 
     <div class="game-container">
+      <div class="tabs-nav">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="changeTab(tab.id)"
+          :class="{ 'active-tab': activeTab === tab.id }"
+          class="tab-button" 
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+
       <!-- Section Production -->
-      <section class="game-section production-section">
+      <section v-if="activeTab === 'production'" class="game-section production-section">
         <h2>Production</h2>
         <div class="resources-panel">
           <div v-for="resource in gameState.resources.values()" :key="resource.name" class="resource">
@@ -51,7 +63,7 @@
       </section>
 
       <!-- Section Particules -->
-      <section class="game-section particles-section">
+      <section v-if="activeTab === 'particles'" class="game-section particles-section">
         <h2>Particules</h2>
 
         <!-- Sous-section Obtention de Particules -->
@@ -77,13 +89,13 @@
       </section>
 
       <!-- Section Progression -->
-      <section class="game-section progression-section">
+      <section v-if="activeTab === 'progression'" class="game-section progression-section">
         <h2>Progression</h2>
         <!-- Ajoutez ici les composants ou éléments liés aux améliorations et au prestige -->
         <!-- Par exemple: <Upgrades /> ou <Prestige /> -->
       </section>
 
-      <section class="game-section prestige-section">
+      <section v-if="activeTab === 'prestige'" class="game-section prestige-section">
         <Prestige />
       </section>
     </div>
@@ -141,6 +153,19 @@ export default {
     const saveService = new SaveService();
     const particleStorage = new ParticleStorage();
     const prestigeService = new PrestigeService();
+
+    // Tab navigation
+    const activeTab = ref('production'); // Default active tab
+    const tabs = ref([
+      { id: 'production', label: 'Production' },
+      { id: 'particles', label: 'Particules' },
+      { id: 'progression', label: 'Progression' },
+      { id: 'prestige', label: 'Prestige' }
+    ]);
+
+    const changeTab = (tabId) => {
+      activeTab.value = tabId;
+    };
 
     // État local réactif pour l'affichage
     const gameState = reactive({
@@ -551,6 +576,10 @@ export default {
       getTotalDtMultiplier,
       getTotalGeneratorBonus,
       getTotalCostReduction,
+      // Tab navigation
+      activeTab,
+      tabs,
+      changeTab,
     };
   }
 }
@@ -566,6 +595,42 @@ body {
   padding: 0;
   line-height: 1.5; /* Reduced line-height */
 }
+
+/* Tab Navigation Styles */
+.tabs-nav {
+  display: flex;
+  margin-bottom: 0; /* Adjusted to 0 as game-section will connect */
+  border-bottom: 2px solid #3a3a5a;
+  padding-left: 10px; /* Align with game-section padding */
+}
+
+.tab-button {
+  padding: 10px 15px;
+  border: none; 
+  background-color: #2a2a4a; /* Inactive tab background */
+  color: #a9b3c1;
+  cursor: pointer;
+  font-size: 1em;
+  margin-right: 5px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  bottom: -2px; /* Overlap the .tabs-nav border-bottom */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-button:hover {
+  background-color: #3a3a5a; /* Slightly lighter for hover */
+  color: #fffffe;
+}
+
+.tab-button.active-tab {
+  background-color: #1a1a2e; /* Same as game-section background */
+  color: #00ff9d;
+  font-weight: bold;
+  border: 2px solid #3a3a5a; /* Sides and top border */
+  border-bottom: 2px solid #1a1a2e; /* "Merge" with content pane */
+}
+/* End Tab Navigation Styles */
 
 .app {
   display: flex;
@@ -614,9 +679,10 @@ body {
 
 .game-section {
   background: #1a1a2e;
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  padding: 15px; /* Reduced padding */
+  border: 2px solid #3a3a5a; /* Match tab nav border thickness */
+  border-top: none; /* Remove top border to connect with tabs-nav */
+  border-radius: 0 0 8px 8px; /* Adjust border-radius for top connection */
+  padding: 15px; 
   flex: 1; /* Permettre aux sections de prendre l'espace disponible */
   min-width: 300px; /* Largeur minimale pour les sections */
   display: flex;
@@ -753,6 +819,22 @@ body {
   .resources-panel .resource .resource-details {
     line-height: 1.3; /* Slightly more space for readability */
     word-break: break-word; /* Prevent overflow from long unbroken strings */
+  }
+
+  .tabs-nav {
+    /* flex-wrap: wrap; /* Removed for horizontal scrolling */
+    overflow-x: auto; /* Enable horizontal scrolling */
+    white-space: nowrap; /* Keep buttons in a single line */
+    padding-left: 5px;
+    /* margin-bottom: 10px; /* Removed as tabs won't wrap and push content down */
+    /* Default margin-bottom: 0 from .tabs-nav desktop style should apply */
+  }
+  .tab-button {
+    padding: 8px 10px;
+    font-size: 0.9em;
+    /* margin-bottom: 5px; /* Removed as tabs won't wrap */
+    display: inline-block; /* Ensure buttons flow in a line with white-space: nowrap */
+    flex-shrink: 0; /* Prevent buttons from shrinking */
   }
 }
 
