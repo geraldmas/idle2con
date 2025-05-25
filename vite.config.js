@@ -12,10 +12,15 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-  base: './',
+  base: '/idle2con/',
   build: {
     outDir: 'docs',
     assetsDir: 'assets',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+      },
+    },
   }
 }); 
