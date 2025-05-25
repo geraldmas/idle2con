@@ -10,17 +10,11 @@
 
 ## Phase 2 : Système de générateurs
 
-### PR #4 : Implémentation des générateurs de base
-- Création de la classe `Generator`
-- Implémentation du Générateur 1 avec sa logique de coût
-- Système de croissance exponentielle
-- Tests unitaires des générateurs
-
-### PR #5 : Système de progression des générateurs
-- Implémentation des Générateurs 2, 3 et 4
-- Système de déblocage conditionnel
-- Logique de coûts et de croissance
-- Tests d'intégration des générateurs
+### PR #5 : Système de progression des générateurs ✅
+- Implémentation des Générateurs 2, 3 et 4 ✅
+- Système de déblocage conditionnel ✅
+- Logique de coûts et de croissance ✅
+- Tests d'intégration des générateurs ✅
 
 ### PR #6 : Système de paliers de puissance
 - Implémentation des paliers (10, 25, 50, 100...)
@@ -107,3 +101,9 @@
 - Implémentation des composants de base (boutons, panneaux) ✅
 - Mise en place du style scientifique ✅
 - Tests d'intégration UI ✅
+
+### PR #4 : Implémentation des générateurs de base ✅
+- Création de la classe `Generator` ✅
+- Implémentation du Générateur 1 avec sa logique de coût ✅
+- Système de croissance exponentielle ✅
+- Tests unitaires des générateurs ✅

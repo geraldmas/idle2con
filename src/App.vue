@@ -18,12 +18,9 @@
             <span class="resource-name">{{ resource.name }}</span>
             <span class="resource-value">{{ formatNumber(resource.getValue()) }}</span>
             <span v-if="resource.name === 'Potentiel'" class="resource-potential">
-              (Formule: {{ resource.generators }} * 1/16 * {{ formatNumber(resource.dt) }} /s)
+              ({{ resource.generators }} * 1/16 * dt /s)
               <br>
-              (dt: {{ formatNumber(resource.dt) }})
-            </span>
-            <span v-if="resource.name === 'Potentiel'" class="resource-generators">
-              Générateurs: {{ resource.generators }}
+              (dt: {{ formatNumber(TickService.getDt()) }})
             </span>
             <span v-if="resource.name === 'États' && resource.nextStateMilestone !== null" class="resource-next-milestone">
               Prochain état à {{ formatNumber(resource.nextStateMilestone) }} Potentiel
@@ -132,17 +129,28 @@ export default {
 
       // Initialiser les générateurs
       const initialGenerators = [
-        reactive(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.2 })), // Générateur 1
-        reactive(new Generator(2, { generator: 10, states: 10 }, { generator: 1.1, states: 1.3 })), // Générateur 2
-        reactive(new Generator(3, { generator: 10, states: 50 }, { generator: 1.2, states: 1.4 })), // Générateur 3
-        reactive(new Generator(4, { generator: 10, states: 200 }, { generator: 1.3, states: 1.5 })), // Générateur 4
+        reactive(new Generator(1, { generator: 0, states: 1 }, { generator: 1, states: 1.2 })), // Générateur 1: coût initial 1 état
+        reactive(new Generator(2, { generator: 10, states: 10 }, { generator: 1.1, states: 1.3 })), // Générateur 2: débloqué à 10 Gén. I, coût 10 Gén. I + 10 états
+        reactive(new Generator(3, { generator: 10, states: 50 }, { generator: 1.2, states: 1.4 })), // Générateur 3: débloqué à 10 Gén. II, coût 10 Gén. II + 50 états
+        reactive(new Generator(4, { generator: 10, states: 200 }, { generator: 1.3, states: 1.5 })), // Générateur 4: débloqué à 10 Gén. III, coût 10 Gén. III + 200 états
       ];
+
+      // Configurer les noms des générateurs
+      initialGenerators[0].name = 'Générateur Quantique I';
+      initialGenerators[1].name = 'Générateur Quantique II';
+      initialGenerators[2].name = 'Générateur Quantique III';
+      initialGenerators[3].name = 'Générateur Quantique IV';
+
+      // Configurer les conditions de déblocage
+      initialGenerators[1].setUnlockRequirement('10 Gén. I');
+      initialGenerators[2].setUnlockRequirement('10 Gén. II');
+      initialGenerators[3].setUnlockRequirement('10 Gén. III');
 
       // Ajuster le count du premier générateur à 1 pour le démarrage
       const initialGen1 = initialGenerators.find(gen => gen.rank === 1);
       if (initialGen1) {
           initialGen1.count = 1; // Le joueur commence avec 1 générateur de rang 1
-           // Configurer la ressource Potentiel pour utiliser ce count initial
+          // Configurer la ressource Potentiel pour utiliser ce count initial
           potentiel.setGenerators(initialGen1.count);
       }
 

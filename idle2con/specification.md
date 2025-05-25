@@ -28,7 +28,7 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 | Ressource    | Description                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | Potentiel    | Ressource principale, produite selon la formule p(t+dt)=p(t)+n*a*dt avec a=1/16 et dt=1, n = nombre de générateurs de 1er rang |
-| États        | Obtenus à chaque palier puissance de 2 de potentiel (2, 4, 8, 16, etc.)                                                        |
+| États        | Obtenus à chaque palier puissance de 2 de potentiel (1, 2, 4, 8, 16, etc.)                                                        |
 | Observations | Obtenues en sacrifiant 10 générateurs                                                                                          |
 
 ---

@@ -10,57 +10,46 @@ export default class Generator {
   }
 
   getCost() {
-    // Pour la compatibilité avec le code existant, on retourne le coût en états
-    return Math.floor(this.baseCost.states * Math.pow(this.growthRates.states, this.count));
+    // Coût en états selon la spécification
+    const baseStateCost = this.rank === 1 ? 1 : 10;
+    const growthRate = this.rank === 1 ? 1.2 : 
+                      this.rank === 2 ? 1.3 :
+                      this.rank === 3 ? 1.4 : 1.5;
+    return Math.floor(baseStateCost * Math.pow(growthRate, this.count));
   }
 
   getGeneratorCost() {
-    return Math.floor(this.baseCost.generator * Math.pow(this.growthRates.generator, this.count));
+    // Coût en générateurs précédents selon la spécification
+    if (this.rank === 1) {
+      return 0; // Le générateur 1 ne coûte pas d'autres générateurs
+    }
+    const baseGeneratorCost = 10;
+    const growthRate = this.rank === 2 ? 1.1 :
+                      this.rank === 3 ? 1.2 : 1.3;
+    return Math.floor(baseGeneratorCost * Math.pow(growthRate, this.count));
   }
 
   canAfford(resources, generators) {
-    // Vérifier si le tableau de générateurs est défini pour éviter les erreurs lors de l'accès aux générateurs précédents
-    // Pour le rang 1, generators peut être indéfini ou vide, ce qui est normal.
     if (this.rank > 1 && (!generators || generators.length === 0)) {
-      console.error(`Generators array is missing or empty for Generator ${this.rank} in canAfford`);
-      return false; // Impossible d'acheter si le tableau de générateurs n'est pas disponible pour les rangs > 1
+      return false;
     }
 
-    // Vérifier si on a assez d'états (en utilisant la propriété 'value')
     const stateCost = this.getCost();
-    // L'objet resource passé a la valeur dans sa propriété 'value'
     const currentState = resources?.value ?? 0;
     
-    console.log(`Generator ${this.rank} Can Afford Check: States Needed=${stateCost}, Current States=${currentState}, Resource Object:`, resources, `Generators Object:`, generators);
-
-    // Vérification de base pour les états
     if (!resources || currentState < stateCost) {
-      console.log(`Generator ${this.rank} CANNOT Afford: Not enough states. Have ${currentState}, Need ${stateCost}`);
-      return false; 
+      return false;
     }
     
-    // Vérifier si on a assez de générateurs du rang précédent (pour rangs > 1)
     if (this.rank > 1) {
-      // Le générateur précédent est à l'index (rank - 1) - 1 = rank - 2 dans l'array si l'array est 0-indexed par rang.
-      // Si generators est l'array generators.value, l'index est this.rank - 2.
-      const previousGeneratorIndex = this.rank - 2; // assuming 0-indexed array where index 0 is rank 1
-      
-      // Assurons-nous que l'index est valide et que le générateur existe
-      if (previousGeneratorIndex < 0 || previousGeneratorIndex >= generators.length) {
-        console.error(`Invalid index for previous generator (${previousGeneratorIndex}) for Generator ${this.rank}`);
-        return false; // Index invalide
-      }
-
-      const previousGenerator = generators[previousGeneratorIndex];
+      const previousGenerator = generators[this.rank - 1];
       const generatorCost = this.getGeneratorCost();
 
       if (!previousGenerator || previousGenerator.count < generatorCost) {
-        console.log(`Generator ${this.rank} CANNOT Afford: Not enough previous generators. Have ${previousGenerator?.count ?? 0} (rank ${this.rank - 1}), Need ${generatorCost}`);
         return false;
       }
     }
     
-    console.log(`Generator ${this.rank} CAN Afford!`);
     return true;
   }
 
@@ -69,15 +58,15 @@ export default class Generator {
       return false;
     }
 
-    // Déduire les coûts
-    resources.states -= this.getCost();
+    // Déduire le coût en états
+    resources.value -= this.getCost();
+
+    // Déduire le coût en générateurs précédents si applicable
     if (this.rank > 1) {
       generators[this.rank - 1].count -= this.getGeneratorCost();
     }
     
     this.count++;
-    
-    // Vérifier les déblocages de fonctionnalités
     this.checkFeatureUnlocks();
     
     return true;
@@ -126,23 +115,17 @@ export default class Generator {
   }
 
   checkFeatureUnlocks() {
-    // Déblocage des fonctionnalités selon le rang
-    switch(this.rank) {
-      case 2:
-        if (this.count >= 1) this.unlockedFeatures.add('observations');
-        break;
-      case 3:
-        if (this.count >= 1) {
-          this.unlockedFeatures.add('fusion');
-          this.unlockedFeatures.add('observations_gen2');
-        }
-        break;
-      case 4:
-        if (this.count >= 1) {
-          this.unlockedFeatures.add('improvements');
-          this.unlockedFeatures.add('observations_gen3');
-        }
-        break;
+    // Déblocage des fonctionnalités selon la spécification
+    if (this.rank === 2 && this.count >= 1) {
+      this.unlockedFeatures.add('observations');
+    }
+    else if (this.rank === 3 && this.count >= 1) {
+      this.unlockedFeatures.add('fusion');
+      this.unlockedFeatures.add('observations_gen2');
+    }
+    else if (this.rank === 4 && this.count >= 1) {
+      this.unlockedFeatures.add('improvements');
+      this.unlockedFeatures.add('observations_gen3');
     }
   }
 

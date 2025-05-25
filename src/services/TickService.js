@@ -87,57 +87,52 @@ class TickService {
 
       // Vérifier les paliers de puissance pour les États
       const etats = this.getResource('États');
-      if (etats) {
-        const potentielValue = potentiel.getValue();
+      const potentielValue = potentiel.getValue();
+
+      if (etats && potentiel) {
         const currentEtatsValue = etats.getValue();
-        
-        // Trouver la prochaine puissance de 2 supérieure ou égale à la valeur actuelle des États + 1
-        // Gérer le cas initial pour 0 états, premier palier à 2 potentiel pour gagner 1 état (0->1)
-        // Puis les paliers sont 2, 4, 8, 16, ... pour gagner l'état suivant (1->2, 2->3, 3->4)
-        // La formule est 2^(nombre d'états actuels) pour le palier *suivant*. Si on a 0 état, le prochain palier est 2^1 = 2.
-        // Si on a 1 état, le prochain palier est 2^2 = 4. Etc.
-        let nextEtatsThreshold = Math.pow(2, currentEtatsValue + 1);
 
-        // Tant que le potentiel dépasse le palier *actuel* (basé sur le nombre d'états), on gagne un état.
-        // On doit vérifier par rapport à Math.pow(2, nbrEtatsActuels) pour gagner le nbrEtatsActuels + 1 ème état.
-        // Le palier pour obtenir l'état N (où l'on a N-1 états) est 2^N.
-        // Donc si on a 0 états, on gagne le 1er état (N=1) au palier 2^1=2 Potentiel.
-        // Si on a 1 état, on gagne le 2ème état (N=2) au palier 2^2=4 Potentiel.
+        // Utiliser totalEarned pour calculer le seuil du prochain état
+        const nextStateThreshold = Math.pow(1.2, etats.totalEarned + 1);
 
-         // La logique correcte est de vérifier si le potentiel >= au palier pour l'état suivant (currentEtatsValue + 1)
-         let thresholdForNextState = Math.pow(2, currentEtatsValue + 1);
+         // Tant que le potentiel accumulé est supérieur ou égal au seuil du prochain état à gagner
+         while (potentielValue >= nextStateThreshold) {
+           // Gagner un état : incrémenter le nombre possédé ET le total gagné
+           etats.value += 1;
+           etats.totalEarned += 1;
 
-         while (potentielValue >= thresholdForNextState) {
-           etats.setValue(etats.getValue() + 1);
-           // Recalculer le seuil pour le prochain état à gagner
-           thresholdForNextState = Math.pow(2, etats.getValue() + 1);
+           // Recalculer le seuil pour le prochain état à gagner basé sur le nouveau totalEarned
+           nextStateThreshold = Math.pow(1.2, etats.totalEarned + 1);
+
+           // Mettre à jour le prochain palier d'état pour l'affichage dans la ressource États
+           // Cette méthode sera appelée après la boucle pour s'assurer que l'affichage est correct.
+           // etats.updateNextStateMilestone(potentielValue); // Appel déplacé après la boucle
          }
+
+         // Mettre à jour le prochain palier d'état pour l'affichage, basé sur le potentiel actuel
+         // etats.updateNextStateMilestone(potentielValue);
+         // Note : L'appel à updateNextStateMilestone est déjà fait dans la boucle while.
+         // Assurons-nous qu'elle est appelée au moins une fois même si aucun état n'est gagné dans ce tick.
+         etats.updateNextStateMilestone(potentielValue); // Appel ici pour l'affichage initial ou si aucun état gagné
+
       }
     }
 
     // Logique pour vérifier et débloquer les générateurs
     this.gameStateGenerators.forEach(generator => {
-        if (!generator.isUnlocked() && generator.unlockRequirement) {
-            // Nous n'avons plus d'instance de GameState dans TickService,
-            // il faut passer l'état nécessaire à la méthode check ou trouver une alternative.
-            // Pour l'instant, je vais laisser la logique de déblocage en commentaire ou l'adapter.
-            // Il faut accéder au nombre de générateurs via gameStateGenerators.
-
-            // Adapter la logique de déblocage pour utiliser gameStateGenerators
-             const requirementMet = generator.unlockRequirement.check({
-                 getGeneratorCount: (index) => {
-                     // S'assurer que l'index existe dans le tableau
-                     if (index >= 0 && index < this.gameStateGenerators.length) {
-                          return this.gameStateGenerators[index].count; // Accéder au count de l'objet réactif
-                     }
-                    return 0; // Retourner 0 si l'index est invalide
-                 }
-             });
-
-            if (requirementMet) {
-                generator.unlock(); // Appeler la méthode unlock du générateur
-            }
-        }
+        // Utiliser updateUnlockStatus qui appelle checkUnlockCondition en interne
+        generator.updateUnlockStatus(this.gameStateGenerators);
+        
+        // La logique d'unlock dans TickService n'est plus nécessaire car updateUnlockStatus gère _isUnlocked
+        // et l'interface utilisateur réagit à isUnlocked().
+        // if (!generator.isUnlocked() && generator.unlockRequirement) {
+        //     const requirementMet = generator.unlockRequirement.check({
+        //         getGeneratorCount: (index) => { ... }
+        //     });
+        //    if (requirementMet) {
+        //        generator.unlock();
+        //    }
+        // }
     });
 
 

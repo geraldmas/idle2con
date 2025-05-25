@@ -14,7 +14,7 @@
         <span class="label">Coût:</span>
         <span class="value">
           {{ formatNumber(cost) }} États
-          <span v-if="generatorCost > 0">+ {{ formatNumber(generatorCost) }} {{ name === 'Générateur Quantique II' ? 'Gén. I' : name === 'Générateur Quantique III' ? 'Gén. II' : 'Gén. III' }}</span>
+          <span v-if="generatorCost > 0">+ {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span>
         </span>
       </div>
     </div>
@@ -25,7 +25,7 @@
       @click="buyGenerator"
     >
       <span v-if="!isUnlocked">Débloqué à {{ unlockRequirement }}</span>
-      <span v-else-if="!canAfford">Coût: {{ formatNumber(cost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ name === 'Générateur Quantique II' ? 'Gén. I' : name === 'Générateur Quantique III' ? 'Gén. II' : 'Gén. III' }}</span></span>
+      <span v-else-if="!canAfford">Coût: {{ formatNumber(cost) }} États<span v-if="generatorCost > 0"> + {{ formatNumber(generatorCost) }} {{ getPreviousGeneratorName }}</span></span>
       <span v-else>Acheter</span>
     </button>
   </div>
@@ -53,13 +53,9 @@ export default {
       type: Number, // Coût en états
       required: true
     },
-     generatorCost: {
+    generatorCost: {
       type: Number, // Coût en générateurs précédents
       default: 0
-    },
-    costResource: {
-      type: String,
-      default: 'États' // Cette prop ne sera plus utilisée pour l'affichage multiple
     },
     isUnlocked: {
       type: Boolean,
@@ -74,8 +70,14 @@ export default {
       default: false
     }
   },
+  emits: ['buy'],
   setup(props, { emit }) {
-    console.log(`Generator ${props.name} received canAfford: ${props.canAfford}`);
+    const getPreviousGeneratorName = computed(() => {
+      if (props.name.includes('II')) return 'Gén. I';
+      if (props.name.includes('III')) return 'Gén. II';
+      if (props.name.includes('IV')) return 'Gén. III';
+      return '';
+    });
 
     const formatNumber = (num) => {
       if (num === undefined || num === null) return '0';
@@ -96,7 +98,8 @@ export default {
 
     return {
       formatNumber,
-      buyGenerator
+      buyGenerator,
+      getPreviousGeneratorName
     };
   }
 }
