@@ -74,7 +74,7 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 ### **Obtention des particules**
 
 * Sacrifice de générateurs contre des particules aléatoires
-* Coût de base : 10 générateurs, croissance exponentielle base 2
+* Coût de base : 10 générateurs, croissance exponentielle base 1.2
 
 | Rang sacrifié | Générations obtenues possibles                                        |
 | ------------- | --------------------------------------------------------------------- |
@@ -96,7 +96,7 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 
 ### **Particules de génération 4 (bosons)**
 
-* **Photon** : augmente l’exposant de `dt` de 5%
+* **Photon** : augmente l'exposant de `dt` de 5%
 * **Boson W+/W-/Z** : boost prod. générateur 4 de 5%, réduit son coût de 5%, ajoute 1 générateur 4 gratuit
 * **Gluon** : double `a` dans la formule
 
@@ -105,9 +105,9 @@ Chaque **prestige** introduit une **nouvelle couche ontologique** (antimatière,
 ## **6. Améliorations**
 
 * Débloquées avec les générateurs de rang 4
-* **Facteur d’échelle** : multiplie `a` par 2
+* **Facteur d'échelle** : multiplie `a` par 2
 
-  * Coût : 20 points d’observation
+  * Coût : 20 points d'observation
   * Croissance : exponentielle base 2
 
 ---

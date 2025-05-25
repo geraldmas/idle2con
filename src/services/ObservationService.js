@@ -7,20 +7,21 @@ export class ObservationService {
     constructor() {
         this.storage = new ParticleStorage();
         this.baseCost = 10; // Coût de base en générateurs
-        this.costMultiplier = 2; // Multiplicateur de coût
+        this.costMultiplier = 1.2; // Multiplicateur de coût
+        this.observationCount = 0; // Compteur d'observations effectuées
     }
 
     canObserve(generatorRank, generatorCount) {
         // Vérifier si on a assez de générateurs du rang spécifié
-        return generatorCount >= this.getObservationCost(generatorRank);
+        return generatorCount >= this.getObservationCost();
     }
 
-    getObservationCost(generatorRank) {
-        // Le coût augmente exponentiellement avec le rang
-        return Math.floor(this.baseCost * Math.pow(this.costMultiplier, generatorRank - 1));
+    getObservationCost() {
+        // Le coût augmente exponentiellement avec le nombre d'observations effectuées
+        return Math.floor(this.baseCost * Math.pow(this.costMultiplier, this.observationCount));
     }
 
-    observe(generatorRank, generatorCount = this.getObservationCost(generatorRank)) {
+    observe(generatorRank, generatorCount = this.getObservationCost()) {
         if (!this.canObserve(generatorRank, generatorCount)) {
             throw new Error(`Pas assez de générateurs de rang ${generatorRank} pour observer`);
         }
@@ -28,10 +29,13 @@ export class ObservationService {
         // Déterminer la génération de particule à obtenir selon le rang
         const particle = this.generateRandomParticle(generatorRank);
         this.storage.addParticle(particle);
+        
+        // Incrémenter le compteur d'observations
+        this.observationCount++;
 
         return {
             particle,
-            cost: this.getObservationCost(generatorRank)
+            cost: this.getObservationCost()
         };
     }
 

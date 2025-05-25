@@ -1,28 +1,6 @@
 # Plan d'implémentation - Quantum Factory
 
 
-
-## Phase 3 : Système de particules
-
-### PR #7 : Collection de particules
-- Création des classes de particules (Gén. 1, 2, 3)
-- Système de stockage des particules
-- Interface de collection
-- Tests des particules
-
-### PR #8 : Système d'observation
-- Implémentation du sacrifice de générateurs
-- Système de génération aléatoire de particules
-- Logique de coûts d'observation
-- Tests du système d'observation
-- On ne peut sacrifier des générateurs de rang N que si on a au minimum un générateur de rang N+1
-
-### PR #9 : Système de fusion
-- Implémentation de la fusion de particules
-- Logique de génération des bosons
-- Interface de fusion
-- Tests du système de fusion
-
 ## Phase 4 : Système de prestige
 
 ### PR #10 : Système de prestige de base
@@ -85,7 +63,7 @@
 - Mise en place du style scientifique ✅
 - Tests d'intégration UI ✅
 
-## Phase 2 : Système de générateurs
+## Phase 2 : Système de générateurs ✅
 
 ### PR #4 : Implémentation des générateurs de base ✅
 - Création de la classe `Generator` ✅
@@ -104,3 +82,25 @@
 - Système de bonus de production ✅
 - Interface de visualisation des paliers ✅
 - Tests des paliers ✅
+
+
+## Phase 3 : Système de particules ✅
+
+### PR #7 : Collection de particules ✅
+- Création des classes de particules (Gén. 1, 2, 3) ✅
+- Système de stockage des particules ✅
+- Interface de collection ✅
+- Tests des particules ✅
+
+### PR #8 : Système d'observation ✅
+- Implémentation du sacrifice de générateurs ✅
+- Système de génération aléatoire de particules ✅
+- Logique de coûts d'observation ✅
+- Tests du système d'observation ✅
+- On ne peut sacrifier des générateurs de rang N que si on a au minimum un générateur de rang N+1 ✅
+
+### PR #9 : Système de fusion ✅
+- Implémentation de la fusion de particules ✅
+- Logique de génération des bosons ✅
+- Interface de fusion ✅
+- Tests du système de fusion ✅

@@ -6,7 +6,7 @@
       <div v-for="rank in 3" :key="rank" class="observation-rank">
         <h3>Générateur Quantique {{ rank }}</h3>
         <div class="observation-info">
-          <span class="cost">Coût: {{ getObservationCost(rank) }} générateurs de rang {{ rank }}</span>
+          <span class="cost">Coût: {{ getObservationCost() }} générateurs de rang {{ rank }}</span>
           <span class="generator-count">
             Générateurs disponibles: {{ getGeneratorCount(rank) }}
           </span>
