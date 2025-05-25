@@ -293,7 +293,7 @@ export default {
         const loadedGenerators = savedData.generators.map(generatorData => {
              const generator = markRaw(new Generator(generatorData.rank, generatorData.baseCost, generatorData.growthRates));
              // Copier les autres propriétés sauvegardées
-             generator.count = generatorData.count;
+             generator.count = generatorData.count || 0; // Default to 0 if undefined
              generator.reachedMilestones = generatorData.reachedMilestones;
              generator.maxCount = generatorData.maxCount || 0; // S'assurer de charger maxCount, default to 0
              generator.manualPurchases = generatorData.manualPurchases || 0; // S'assurer de charger manualPurchases, default to 0
