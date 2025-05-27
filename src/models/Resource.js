@@ -70,15 +70,17 @@ export default class Resource {
   updateNextStateMilestone(currentPotential, antiparticleEffects) {
     if (this.name !== 'États') return;
 
-    const stateThresholdBase = antiparticleEffects?.stateThresholdBase || 10;
+    const stateThresholdBase = 10; // Base FacteurSeuil for États, fixed for PR1
     
     // Calculer le prochain palier de manière plus sûre
-    let nextMilestone = Math.pow(2, this.totalEarned / stateThresholdBase);
+    // Uses the fixed stateThresholdBase
+    let nextMilestone = Math.pow(2, this.totalEarned / stateThresholdBase); 
     
     // Si le potentiel actuel est déjà supérieur au palier calculé
     if (currentPotential >= nextMilestone) {
         // Calculer directement le prochain palier valide
-        const nextTotalEarned = Math.ceil(Math.log2(currentPotential) * stateThresholdBase);
+        // Also uses the fixed stateThresholdBase
+        const nextTotalEarned = Math.ceil(Math.log2(currentPotential) * stateThresholdBase); 
         nextMilestone = Math.pow(2, nextTotalEarned / stateThresholdBase);
     }
     

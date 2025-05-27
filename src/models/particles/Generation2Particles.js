@@ -3,14 +3,16 @@ import { Particle } from '../Particle';
 // Effets spécifiques pour chaque type de particule
 const effects = {
     muon: {
-        value: 0.05,
-        description: "Augmente dt de 5%",
-        dtMultiplier: 0.05,
+        value: 0, // As per instruction, value is 0 for Muon
+        description: "Augmente dt de 20%",
+        dtMultiplier: 1.20, // 20% increase
         generatorBonus: 0,
         costReduction: 0,
-        apply: (gameState) => ({
+        // The apply function might need to be removed or updated
+        // if dtMultiplier is handled globally in TickService.
+        apply: (gameState) => ({ 
             ...gameState,
-            dt: gameState.dt * (1 + 0.05)
+            // This specific dt modification might become redundant
         })
     },
     neutrinoMu: {

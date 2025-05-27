@@ -72,6 +72,7 @@
             :generators="gameState.generators"
             :is-debug-mode="isDebugEnabled"
             @particle-observed="handleParticleObserved"
+            :particle-storage="particleStorage" <!-- Pass particleStorage as a prop -->
           />
         </div>
 
@@ -156,7 +157,8 @@ export default {
       prestigeMultiplier: 1,
       antiparticlesUnlocked: false,
       supersymmetricParticlesUnlocked: false,
-      antiparticleEffects: {}
+      antiparticleEffects: {},
+      particleStorageInstance: particleStorage // Provide particleStorage to gameState
     });
 
     const gen1 = computed(() => gameState.generators.find(gen => gen.rank === 1));
@@ -200,6 +202,7 @@ export default {
        // Initialiser les ressources
       const potentiel = new Resource('Potentiel', 0);
       const etats = new Resource('États', 0);
+      const pointsObservation = new Resource("Points d'Observation", 0); // Initialize Points d'Observation
 
       // Initialiser les générateurs
       const initialGenerators = [
@@ -250,7 +253,7 @@ export default {
           potentiel.baseProduction = 1/32;
       }
 
-       return { resources: new Map([[potentiel.name, potentiel], [etats.name, etats]]), generators: initialGenerators };
+       return { resources: new Map([[potentiel.name, potentiel], [etats.name, etats], ["Points d'Observation", pointsObservation]]), generators: initialGenerators };
     };
 
     const resetGame = () => {
@@ -294,6 +297,12 @@ export default {
             }
             loadedResources.set(resource.name, resource);
         });
+
+        // Ensure "Points d'Observation" is loaded or initialized
+        if (!loadedResources.has("Points d'Observation")) {
+            const pointsObservation = new Resource("Points d'Observation", 0);
+            loadedResources.set("Points d'Observation", markRaw(pointsObservation));
+        }
 
         const loadedGenerators = savedData.generators.map(generatorData => {
              const generator = markRaw(new Generator(generatorData.rank, generatorData.baseCost, generatorData.growthRates));
@@ -493,6 +502,7 @@ export default {
     return {
       gameState,
       gen1,
+      particleStorage, // Expose particleStorage for the template to pass as prop
       isDebugEnabled,
       formatNumber,
       toggleDebug,

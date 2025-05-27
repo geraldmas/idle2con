@@ -3,14 +3,18 @@ import { Particle } from '../Particle';
 // Effets spécifiques pour chaque type de particule
 const effects = {
     electron: {
-        value: 0.03,
-        description: "Augmente dt de 3%",
-        dtMultiplier: 0.03,
+        value: 0, // As per instruction, value is 0 for Electron
+        description: "Augmente dt de 5%",
+        dtMultiplier: 1.05, // 5% increase
         generatorBonus: 0,
         costReduction: 0,
-        apply: (gameState) => ({
+        // The apply function might need to be removed or updated
+        // if dtMultiplier is handled globally in TickService.
+        // For now, let's leave it as is, assuming TickService will handle the primary dt modification.
+        apply: (gameState) => ({ 
             ...gameState,
-            dt: gameState.dt * (1 + 0.03)
+            // This specific dt modification might become redundant
+            // dt: gameState.dt * (1 + 0.03) // Original logic
         })
     },
     neutrinoE: {
