@@ -13,17 +13,32 @@
     </header>
 
     <div class="game-container">
+      <div class="tabs-nav">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="changeTab(tab.id)"
+          :class="{ 'active-tab': activeTab === tab.id }"
+          class="tab-button" 
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+
       <!-- Section Production -->
-      <section class="game-section production-section">
+      <section v-if="activeTab === 'production'" class="game-section production-section">
         <h2>Production</h2>
         <div class="resources-panel">
           <div v-for="resource in gameState.resources.values()" :key="resource.name" class="resource">
             <span class="resource-name">{{ resource.name }}</span>
             <span class="resource-value">{{ formatNumber(resource.getValue()) }}</span>
             <span v-if="resource.name === 'Potentiel'" class="resource-details">
-              (N * a * dt /s)
-              <br>
-              (N: {{ Math.floor(resource.generators) }}, a: {{ formatNumber(resource.baseProduction, 3) }}, dt: {{ formatNumber(TickService.getDt(), 3) }})
+              <span>Formule: {{ dynamicFormulaText }}</span><br>
+              <span>(N: {{ formatNumber(Math.floor(gen1?.count || 0), 0) }}, a: {{ baseProductionDisplay }}, dt: {{ dtDisplay }})</span>
+              <template v-if="(gen1 && gen1.getMilestoneBonus() > 1) || (gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1">
+                <br><span>(</span><template v-if="gen1 && gen1.getMilestoneBonus() > 1">Bonus MS: {{ milestoneBonusDisplay }}</template><template v-if="(gen1 && gen1.getMilestoneBonus() > 1) && (gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1">, </template><template v-if="(gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1">Bonus AP: {{ antiparticleMultiplierDisplay }}</template><span>)</span>
+              </template>
+              <br><span>Prod. par tick: {{ actualCalculatedProduction }}</span>
             </span>
             <span v-if="resource.name === 'États' && resource.nextStateMilestone !== null" class="resource-next-milestone">
               Prochain état à {{ formatNumber(resource.nextStateMilestone) }} Potentiel
@@ -48,12 +63,11 @@
       </section>
 
       <!-- Section Particules -->
-      <section class="game-section particles-section">
+      <section v-if="activeTab === 'particles'" class="game-section particles-section">
         <h2>Particules</h2>
 
         <!-- Sous-section Obtention de Particules -->
         <div class="subsection observation-subsection">
-          <h3>Obtention de Particules</h3>
           <ParticleObservation
             :generators="gameState.generators"
             :is-debug-mode="isDebugEnabled"
@@ -66,19 +80,22 @@
           <h3>Collection et Effets</h3>
           <ParticleCollection
             :particles="gameState.particles"
+            :total-dt-multiplier="getTotalDtMultiplier()"
+            :total-generator-bonus="getTotalGeneratorBonus()"
+            :total-cost-reduction="getTotalCostReduction()"
             @fuse-particles="handleParticleFusion"
           />
         </div>
       </section>
 
       <!-- Section Progression -->
-      <section class="game-section progression-section">
+      <section v-if="activeTab === 'progression'" class="game-section progression-section">
         <h2>Progression</h2>
         <!-- Ajoutez ici les composants ou éléments liés aux améliorations et au prestige -->
         <!-- Par exemple: <Upgrades /> ou <Prestige /> -->
       </section>
 
-      <section class="game-section prestige-section">
+      <section v-if="activeTab === 'prestige'" class="game-section prestige-section">
         <Prestige />
       </section>
     </div>
@@ -137,6 +154,19 @@ export default {
     const particleStorage = new ParticleStorage();
     const prestigeService = new PrestigeService();
 
+    // Tab navigation
+    const activeTab = ref('production'); // Default active tab
+    const tabs = ref([
+      { id: 'production', label: 'Production' },
+      { id: 'particles', label: 'Particules' },
+      { id: 'progression', label: 'Progression' },
+      { id: 'prestige', label: 'Prestige' }
+    ]);
+
+    const changeTab = (tabId) => {
+      activeTab.value = tabId;
+    };
+
     // État local réactif pour l'affichage
     const gameState = reactive({
       resources: new Map(),
@@ -149,17 +179,25 @@ export default {
       antiparticleEffects: {}
     });
 
+    const gen1 = computed(() => gameState.generators.find(gen => gen.rank === 1));
+
     const isDebugEnabled = ref(false);
     let updateInterval;
     let saveInterval;
 
     const formatNumber = (num, decimals = 2) => {
       if (num === undefined || num === null) return '0';
-      if (num >= 1000000) {
+      // Utiliser toLocaleString pour une meilleure séparation des milliers si nécessaire,
+      // ou conserver la logique K/M existante. Pour la consistance avec le reste du code :
+      if (Math.abs(num) >= 1000000) {
         return (num / 1000000).toFixed(decimals) + 'M';
       }
-      if (num >= 1000) {
+      if (Math.abs(num) >= 1000) {
         return (num / 1000).toFixed(decimals) + 'K';
+      }
+      // Pour les très petits nombres, utiliser la notation scientifique ou plus de décimales
+      if (Math.abs(num) < 0.001 && num !== 0) {
+        return num.toExponential(decimals > 0 ? decimals -1 : 2);
       }
       return num.toFixed(decimals);
     };
@@ -481,9 +519,44 @@ export default {
     // Fournir l'état du jeu aux composants enfants
     provide('gameState', gameState);
 
+    const baseProductionDisplay = computed(() => formatNumber(1/32, 3));
+    const milestoneBonusDisplay = computed(() => {
+      if (!gen1.value) return "1x";
+      const bonus = gen1.value.getMilestoneBonus();
+      return bonus === 1 ? "1x" : `${formatNumber(bonus, 2)}x`;
+    });
+    const antiparticleMultiplierDisplay = computed(() => {
+      const multiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
+      return multiplier === 1 ? "1x" : `${formatNumber(multiplier, 2)}x`;
+    });
+    const dtDisplay = computed(() => formatNumber(TickService.getDt(), 3));
+
+    const dynamicFormulaText = computed(() => {
+      let formula = `N × a`;
+      if (gen1.value && gen1.value.getMilestoneBonus() > 1) {
+        formula += ` × BonusMS`;
+      }
+      if ((gameState.antiparticleEffects?.generatorProductionMultiplier || 1) > 1) {
+        formula += ` × BonusAP`;
+      }
+      formula += ` × dt`;
+      return formula;
+    });
+
+    const actualCalculatedProduction = computed(() => {
+      if (!gen1.value) return formatNumber(0);
+      const baseProd = 1/32;
+      const milestoneBonus = gen1.value.getMilestoneBonus();
+      const antiparticleMultiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
+      const dt = TickService.getDt();
+      const production = gen1.value.count * baseProd * milestoneBonus * antiparticleMultiplier * dt;
+      return formatNumber(production, 3);
+    });
+
     // Retourner l'état local réactif pour l'affichage
     return {
       gameState,
+      gen1,
       isDebugEnabled,
       formatNumber,
       toggleDebug,
@@ -491,7 +564,22 @@ export default {
       handleParticleObserved,
       handleParticleFusion,
       resetGame,
-      handleBuyGenerator
+      handleBuyGenerator,
+      // Dynamic formula parts
+      baseProductionDisplay,
+      milestoneBonusDisplay,
+      antiparticleMultiplierDisplay,
+      dtDisplay,
+      dynamicFormulaText,
+      actualCalculatedProduction,
+      // Particle effect totals
+      getTotalDtMultiplier,
+      getTotalGeneratorBonus,
+      getTotalCostReduction,
+      // Tab navigation
+      activeTab,
+      tabs,
+      changeTab,
     };
   }
 }
@@ -505,8 +593,44 @@ body {
   color: #fffffe;
   margin: 0;
   padding: 0;
-  line-height: 1.6;
+  line-height: 1.5; /* Reduced line-height */
 }
+
+/* Tab Navigation Styles */
+.tabs-nav {
+  display: flex;
+  margin-bottom: 0; /* Adjusted to 0 as game-section will connect */
+  border-bottom: 2px solid #3a3a5a;
+  padding-left: 10px; /* Align with game-section padding */
+}
+
+.tab-button {
+  padding: 10px 15px;
+  border: none; 
+  background-color: #2a2a4a; /* Inactive tab background */
+  color: #a9b3c1;
+  cursor: pointer;
+  font-size: 1em;
+  margin-right: 5px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  bottom: -2px; /* Overlap the .tabs-nav border-bottom */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-button:hover {
+  background-color: #3a3a5a; /* Slightly lighter for hover */
+  color: #fffffe;
+}
+
+.tab-button.active-tab {
+  background-color: #1a1a2e; /* Same as game-section background */
+  color: #00ff9d;
+  font-weight: bold;
+  border: 2px solid #3a3a5a; /* Sides and top border */
+  border-bottom: 2px solid #1a1a2e; /* "Merge" with content pane */
+}
+/* End Tab Navigation Styles */
 
 .app {
   display: flex;
@@ -516,7 +640,7 @@ body {
 
 .app-header {
   background-color: #1a1a2e;
-  padding: 15px 20px;
+  padding: 10px 15px; /* Reduced padding */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
@@ -547,17 +671,19 @@ body {
 
 .game-container {
   display: flex;
-  flex-wrap: wrap; /* Permettre aux sections de passer à la ligne sur petits écrans */
-  padding: 20px;
-  gap: 20px; /* Espacement entre les sections */
+  flex-direction: column; /* Stack tabs-nav and game-section vertically */
+  padding: 15px; 
+  /* flex-wrap: wrap; /* No longer needed for direct children */
+  /* gap: 15px; /* No longer needed for direct children */
   flex-grow: 1;
 }
 
 .game-section {
   background: #1a1a2e;
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  padding: 20px;
+  border: 2px solid #3a3a5a; /* Match tab nav border thickness */
+  border-top: none; /* Remove top border to connect with tabs-nav */
+  border-radius: 0 0 8px 8px; /* Adjust border-radius for top connection */
+  padding: 15px; 
   flex: 1; /* Permettre aux sections de prendre l'espace disponible */
   min-width: 300px; /* Largeur minimale pour les sections */
   display: flex;
@@ -568,8 +694,8 @@ body {
   color: #00ff9d;
   margin-top: 0;
   border-bottom: 1px solid #3a3a5a;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
+  padding-bottom: 8px; /* Reduced padding-bottom */
+  margin-bottom: 15px; /* Reduced margin-bottom */
 }
 
 /* Styles pour les sous-sections (Observation, Collection, etc.) */
@@ -577,8 +703,8 @@ body {
   background: #16213e; /* Couleur de fond légèrement différente */
   border: 1px solid #0f3460;
   border-radius: 6px;
-  padding: 15px;
-  margin-bottom: 15px; /* Espacement entre les sous-sections */
+  padding: 10px; /* Reduced padding */
+  margin-bottom: 10px; /* Reduced margin-bottom */
 }
 
 .subsection:last-child {
@@ -588,55 +714,65 @@ body {
 .subsection h3 {
   color: #e94560; /* Couleur d'accent pour les sous-titres */
   margin-top: 0;
-  margin-bottom: 15px;
+  margin-bottom: 10px; /* Reduced margin-bottom */
   border-bottom: 1px solid #0f3460;
-  padding-bottom: 8px;
+  padding-bottom: 6px; /* Reduced padding-bottom */
 }
 
 /* Styles spécifiques aux panneaux (resources, generators) */
 .resources-panel, .generators-panel {
-  margin-bottom: 20px;
+  margin-bottom: 10px; /* Reduced margin-bottom for generators-panel */
 }
 
 .resources-panel .resource {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 8px; /* Reduced padding */
+  margin-bottom: 8px; /* Reduced margin-bottom */
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* Changed to flex-start for multi-line details */
+  flex-wrap: wrap; /* Allow wrapping for smaller screens / long details */
 }
 
 .resource-name {
   color: #a9b3c1;
   font-weight: bold;
+  margin-right: 10px; /* Add some space between name and value/details */
 }
 
 .resource-value {
   color: #e6e6e6;
   font-family: 'Roboto Mono', monospace;
+  font-weight: 600; /* Slightly bolder */
+  text-align: right; /* Align to right if it wraps below name */
+  flex-grow: 1; /* Allow it to take space */
 }
 
 .resource-details {
-  font-size: 0.8em;
+  font-size: 0.75em; /* Maintained reduced font-size */
   color: #a9b3c1;
-  margin-left: 10px;
+  margin-left: 0; /* Removed margin, will be child of flex container */
+  line-height: 1.2; /* Further reduced line-height for compactness */
+  width: 100%; /* Take full width for details block */
+  margin-top: 4px; /* Add a small top margin */
 }
 
 .resource-next-milestone {
-   font-size: 0.9em;
+  font-size: 0.8em; /* Reduced font-size */
   color: #00ff9d;
-  margin-left: 10px;
+  margin-left: 0; /* Removed margin */
+  width: 100%; /* Take full width */
+  margin-top: 4px; /* Add a small top margin */
 }
 
 /* Media Queries pour le Responsive Design */
 @media (max-width: 768px) {
   .game-container {
-    flex-direction: column; /* Empiler les sections sur petits écrans */
-    padding: 10px;
-    gap: 10px;
+    /* flex-direction: column; /* Already column from base style */
+    padding: 10px; /* Adjust padding for smaller screens */
+    /* gap: 10px; /* No longer needed for direct children */
   }
 
   .game-section {
@@ -679,6 +815,27 @@ body {
   .resource-details, .resource-next-milestone {
     margin-left: 0;
     margin-top: 5px;
+  }
+  /* Specific adjustments for Potentiel formula display on small screens */
+  .resources-panel .resource .resource-details {
+    line-height: 1.3; /* Slightly more space for readability */
+    word-break: break-word; /* Prevent overflow from long unbroken strings */
+  }
+
+  .tabs-nav {
+    /* flex-wrap: wrap; /* Removed for horizontal scrolling */
+    overflow-x: auto; /* Enable horizontal scrolling */
+    white-space: nowrap; /* Keep buttons in a single line */
+    padding-left: 5px;
+    /* margin-bottom: 10px; /* Removed as tabs won't wrap and push content down */
+    /* Default margin-bottom: 0 from .tabs-nav desktop style should apply */
+  }
+  .tab-button {
+    padding: 8px 10px;
+    font-size: 0.9em;
+    /* margin-bottom: 5px; /* Removed as tabs won't wrap */
+    display: inline-block; /* Ensure buttons flow in a line with white-space: nowrap */
+    flex-shrink: 0; /* Prevent buttons from shrinking */
   }
 }
 

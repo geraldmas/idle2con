@@ -1,6 +1,6 @@
 <template>
   <div class="particle-collection">
-    <h2>Collection de Particules</h2>
+    <h3>Collection de Particules</h3> 
     
     <div class="total-effects-summary">
       <div class="effect-category">
@@ -77,6 +77,18 @@ export default {
     particles: {
       type: Array,
       required: true
+    },
+    totalDtMultiplier: {
+      type: Number,
+      default: 1
+    },
+    totalGeneratorBonus: {
+      type: Number,
+      default: 1
+    },
+    totalCostReduction: {
+      type: Number,
+      default: 1
     }
   },
   setup(props, { emit }) {
@@ -124,31 +136,18 @@ export default {
       return `${(totalEffect * 100).toFixed(1)}%`;
     };
 
-    const calculateGlobalEffect = (effectType) => {
-      let totalEffect = 1;
-      props.particles.forEach(particle => {
-        let effect = 0;
-        switch(effectType) {
-          case 'dt':
-            effect = particle.getDtMultiplier();
-            break;
-          case 'generator':
-            effect = particle.getGeneratorBonus();
-            break;
-          case 'cost':
-            effect = particle.getCostReduction();
-            break;
-        }
-        if (effect > 0) {
-          totalEffect *= (1 + effect);
-        }
-      });
-      return totalEffect - 1;
-    };
-
-    const formatGlobalEffect = (effectType) => {
-      const effect = calculateGlobalEffect(effectType);
-      return `${(effect * 100).toFixed(1)}%`;
+    const formatTotalEffectPercentage = (value, effectType) => {
+      let percentage = 0;
+      if (effectType === 'cost') {
+        percentage = (1 - value) * 100;
+        // Label implies reduction, so a positive percentage is fine.
+        return `${percentage.toFixed(1)}%`;
+      } else {
+        // For bonuses (dt, generator)
+        percentage = (value - 1) * 100;
+        const sign = percentage >= 0 ? '+' : '';
+        return `${sign}${percentage.toFixed(1)}%`;
+      }
     };
 
     const prepareFusion = (type) => {
@@ -182,7 +181,8 @@ export default {
       canFuse,
       formatEffect,
       formatTotalEffect,
-      formatGlobalEffect,
+      // formatGlobalEffect, // Removed
+      formatTotalEffectPercentage, // Added
       prepareFusion,
       confirmFusion
     };
@@ -192,25 +192,35 @@ export default {
 
 <style scoped>
 .particle-collection {
-  padding: 15px;
+  padding: 0; /* Removed padding, outer .subsection in App.vue handles it */
   background: #1a1a2e;
   color: #e6e6e6;
-  border-radius: 8px;
+  /* border-radius: 8px; /* No longer needed if padding is 0 */
+}
+
+/* Style the h3 title to match .subsection h3 from App.vue */
+.particle-collection > h3:first-of-type {
+  color: #e94560;
+  margin-top: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #0f3460;
+  padding-bottom: 6px;
+  font-size: 1.15em; /* Consistent with other subsection h3 */
 }
 
 .total-effects-summary {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
+  padding: 8px; /* Further Reduced padding */
+  margin-bottom: 10px; /* Further Reduced margin-bottom */
 }
 
 .effect-category {
   display: flex;
   justify-content: space-between;
-  margin: 5px 0;
-  font-size: 1em;
+  margin: 3px 0; /* Further Reduced margin */
+  font-size: 0.9em; 
 }
 
 .effect-category .label {
@@ -225,21 +235,21 @@ export default {
 
 .particles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Further Reduced minmax */
+  gap: 6px; /* Further Reduced gap */
+  margin-top: 8px; 
 }
 
 .particle-card {
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 8px;
-  padding: 10px;
+  padding: 8px; 
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   position: relative;
-  min-height: 120px;
+  min-height: 100px; /* Further Reduced min-height */
 }
 
 .particle-card:hover {
@@ -251,85 +261,85 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* Reduced margin */
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px; /* Reduced gap */
 }
 
 .particle-header h3 {
   margin: 0;
-  font-size: 1em;
+  font-size: 0.95em; /* Reduced font-size */
   flex-grow: 1;
-  margin-right: 5px;
+  margin-right: 4px; /* Reduced margin */
   word-break: break-word;
 }
 
 .generation-badge {
   background: #e94560;
-  padding: 1px 6px;
+  padding: 1px 5px; /* Reduced padding */
   border-radius: 10px;
-  font-size: 0.7em;
+  font-size: 0.65em; /* Reduced font-size */
   flex-shrink: 0;
 }
 
 .particle-count-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: -6px; /* Adjusted position */
+  right: -6px; /* Adjusted position */
   background: #00ff9d;
   color: #1a1a2e;
   border-radius: 50%;
-  padding: 4px 6px;
-  font-size: 0.7em;
+  padding: 3px 5px; /* Reduced padding */
+  font-size: 0.65em; /* Reduced font-size */
   font-weight: bold;
-  min-width: 18px;
+  min-width: 16px; /* Adjusted min-width */
   text-align: center;
   border: 1px solid #1a1a2e;
   z-index: 1;
 }
 
 .particle-details {
-  margin: 8px 0;
+  margin: 4px 0; /* Further Reduced margin */
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px; /* Further Reduced gap */
 }
 
 .effect, .total-effect {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 0.9em;
+  gap: 2px; 
+  font-size: 0.8em; /* Further Reduced font-size */
 }
 
 .effect .label, .total-effect .label {
   color: #8b8b8b;
-  font-size: 0.9em;
+  font-size: 0.8em; /* Further Reduced font-size to match parent */
 }
 
 .effect .value, .total-effect .value {
   color: #e6e6e6;
   font-family: 'Roboto Mono', monospace;
   word-break: break-word;
-  line-height: 1.3;
+  line-height: 1.2; /* Reduced line-height */
 }
 
 .particle-actions {
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 6px; /* Reduced padding-top */
 }
 
 .fuse-button {
   width: 100%;
-  padding: 6px;
+  padding: 4px; /* Further Reduced padding */
   background: #e94560;
   border: none;
   border-radius: 4px;
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 0.9em;
+  font-size: 0.8em; /* Further Reduced font-size */
   white-space: nowrap;
 }
 
@@ -352,7 +362,7 @@ export default {
 
 .modal-content {
   background: #1a1a2e;
-  padding: 20px;
+  padding: 15px; /* Reduced padding */
   border-radius: 8px;
   text-align: center;
   color: #e6e6e6;
@@ -361,18 +371,18 @@ export default {
 .modal-content h3 {
   color: #00ff9d;
   margin-top: 0;
-  margin-bottom: 15px;
+  margin-bottom: 10px; /* Reduced margin-bottom */
 }
 
 .modal-actions {
-  margin-top: 20px;
+  margin-top: 15px; /* Reduced margin-top */
   display: flex;
   justify-content: center;
-  gap: 15px;
+  gap: 10px; /* Reduced gap */
 }
 
 .confirm-button, .cancel-button {
-  padding: 8px 16px;
+  padding: 6px 12px; /* Reduced padding */
   border: none;
   border-radius: 4px;
   cursor: pointer;
