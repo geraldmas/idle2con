@@ -12,6 +12,38 @@ export default class Generator {
     this.unlockedFeatures = new Set();
     this._maxCount = ref(0);
     this._manualPurchases = ref(0);
+
+    // Properties for higher-rank generator production
+    this.producesRank = null;
+    this.productionOutputRate = 0; // e.g., 0.1 means 0.1 units per second
+    this.producesResourceName = null; // For future flexibility
+  }
+
+  setProductionOutput(rankToProduce, rate, resourceName = null) {
+    this.producesRank = rankToProduce;
+    this.productionOutputRate = rate;
+    this.producesResourceName = resourceName;
+  }
+
+  runHigherRankProduction(dt, allGenerators, antiparticleEffects) {
+    if (!this.producesRank || this.count <= 0 || this.productionOutputRate <= 0) {
+      return;
+    }
+
+    const targetGenerator = allGenerators.find(gen => gen.rank === this.producesRank);
+    if (!targetGenerator) {
+      console.warn(`Generator Rank ${this.rank} produces Rank ${this.producesRank}, but target generator not found.`);
+      return;
+    }
+
+    // Consider if antiparticleEffects should influence this production rate
+    // For now, let's assume they don't directly multiply inter-generator production,
+    // unless specified otherwise by game design.
+    // Example: const effectiveRate = this.productionOutputRate * (antiparticleEffects?.interGeneratorMultiplier || 1);
+    const effectiveRate = this.productionOutputRate;
+
+    const amountProduced = Number((this.count * effectiveRate * dt).toFixed(10));
+    targetGenerator.count = Number((targetGenerator.count + amountProduced).toFixed(10));
   }
 
   get count() {
@@ -171,45 +203,26 @@ export default class Generator {
     return true;
   }
 
-  getProduction(gameState) {
-    // Production de base par tick par générateur
-    const baseProductionPerGenerator = 1/32; // Utiliser 1/32 selon la spec Potentiel
-
-    // Obtenir le bonus des paliers de puissance (basé sur maxCount)
+  // Renamed from getProduction for clarity, specifically for Gen1's Potentiel output
+  getPotentielOutputPerTick(gameState) {
+    const baseProductionPerGenerator = this.getBaseProduction(); // Or this.getBaseProduction() if preferred after change
     const milestoneBonus = this.getMilestoneBonus();
-
-    // Obtenir le multiplicateur global des antiparticules
     const antiparticleProductionMultiplier = gameState?.antiparticleEffects?.generatorProductionMultiplier || 1;
-
-    // Production totale avec une meilleure précision
     const totalProduction = Number((this.count * baseProductionPerGenerator * milestoneBonus * antiparticleProductionMultiplier).toFixed(10));
-
     return totalProduction;
   }
 
   getProductionPerGenerator(gameState) {
-    // Production de base par tick par générateur
-    const baseProductionPerGenerator = 1/32; // Utiliser 1/32 selon la spec Potentiel
-
-    // Obtenir le bonus des paliers de puissance (basé sur maxCount)
+    const baseProductionPerGenerator = this.getBaseProduction(); // Using the corrected getBaseProduction()
     const milestoneBonus = this.getMilestoneBonus();
-
-    // Obtenir le multiplicateur global des antiparticules
     const antiparticleProductionMultiplier = gameState?.antiparticleEffects?.generatorProductionMultiplier || 1;
-
-    // Production par générateur avec une meilleure précision
     const productionPerGenerator = Number((baseProductionPerGenerator * milestoneBonus * antiparticleProductionMultiplier).toFixed(10));
-
     return productionPerGenerator;
   }
 
   getBaseProduction() {
-    // Cette méthode devrait peut-être être renommée ou clarifiée.
-    // Si elle renvoie la production *sans* bonus, elle reste 1/16 (ou 1/32).
-    // Si elle est censée être utilisée pour l'affichage de la production de BASE dans l'UI,
-    // elle devrait peut-être inclure le multiplicateur global si celui-ci est considéré comme BASE.
-    // En l'état, elle renvoie la production de base par unité, sans bonus.
-    return 1/16; // Production de base par générateur par tick
+    // This method should reflect the base rate used for Potentiel production.
+    return 1/32; 
   }
 
   checkUnlockCondition(generators) {

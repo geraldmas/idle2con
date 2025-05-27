@@ -1,4 +1,3 @@
-import GameState from '../models/GameState';
 import { reactive } from 'vue';
 
 class TickService {
@@ -85,15 +84,6 @@ class TickService {
       // Appliquer les effets des antiparticules avant de mettre à jour les ressources et générateurs
       const antiparticleEffects = this.gameState.antiparticleEffects || {};
 
-      // Mettre à jour les ressources (Potentiel et États)
-      // Accéder aux ressources via gameState
-      this.gameState.resources.forEach(resource => {
-        // Ne pas mettre à jour le Potentiel ici car il sera mis à jour plus tard
-        if (resource.name !== 'Potentiel' && typeof resource.update === 'function') {
-          resource.update(this.dt, antiparticleEffects);
-        }
-      });
-
       // Mettre à jour les générateurs (leur logique de déblocage et de coût pourrait dépendre des effets)
       // Accéder aux générateurs via gameState
       this.gameState.generators.forEach((generator, index) => {
@@ -104,57 +94,28 @@ class TickService {
         }
       });
 
-      // Production des générateurs de rang > 1 (production de générateurs de rang inférieur)
-      // Accéder aux générateurs via gameState
-      const gen1 = this.gameState.generators.find(gen => gen.rank === 1);
-      const gen2 = this.gameState.generators.find(gen => gen.rank === 2);
-      const gen3 = this.gameState.generators.find(gen => gen.rank === 3);
-      const gen4 = this.gameState.generators.find(gen => gen.rank === 4);
-
-      // Production de Générateurs I par les Générateurs II
-      if (gen1 && gen2 && gen2.count > 0) {
-        // Chaque Générateur II produit 0.1 Générateur I par seconde
-        const gen1Production = Number((gen2.count * 0.1 * this.dt).toFixed(10));
-        const newGen1Count = Number((gen1.count + gen1Production).toFixed(10));
-        
-        // Mettre à jour le nombre de générateurs
-        gen1.count = newGen1Count;
-      }
-
-      // Production de Générateurs II par les Générateurs III
-      if (gen2 && gen3 && gen3.count > 0) {
-        // Chaque Générateur III produit 0.1 Générateur II par seconde
-        const gen2Production = Number((gen3.count * 0.1 * this.dt).toFixed(10));
-        gen2.count = Number((gen2.count + gen2Production).toFixed(10));
-      }
-
-      // Production de Générateurs III par les Générateurs IV
-      if (gen3 && gen4 && gen4.count > 0) {
-        // Chaque Générateur IV produit 0.1 Générateur III par seconde
-        const gen3Production = Number((gen4.count * 0.1 * this.dt).toFixed(10));
-        gen3.count = Number((gen3.count + gen3Production).toFixed(10));
-      }
+      // Production des générateurs de rang supérieur (produisent des générateurs de rang inférieur)
+      this.gameState.generators.forEach(generator => {
+        if (typeof generator.runHigherRankProduction === 'function') {
+          generator.runHigherRankProduction(this.dt, this.gameState.generators, antiparticleEffects);
+        }
+      });
 
       // Mettre à jour le Potentiel après avoir mis à jour tous les générateurs
       const potentielResource = this.gameState.resources.get('Potentiel');
-      if (potentielResource && gen1) {
-        // Mettre à jour le nombre de générateurs dans la ressource Potentiel
-        potentielResource.setGenerators(gen1.count);
-        
-        // Calculer la production de potentiel
-        const baseProduction = 1/32; // Production de base par générateur
-        const milestoneBonus = gen1.getMilestoneBonus();
+      const gen1ForPotentiel = this.gameState.generators.find(gen => gen.rank === 1); 
+      if (potentielResource && gen1ForPotentiel) {
+        potentielResource.setGenerators(gen1ForPotentiel.count);
+        // Utiliser getBaseProduction() pour la production de base, comme suggéré
+        const baseProduction = gen1ForPotentiel.getBaseProduction ? gen1ForPotentiel.getBaseProduction() : 1/32;
+        const milestoneBonus = gen1ForPotentiel.getMilestoneBonus();
         const antiparticleMultiplier = antiparticleEffects?.generatorProductionMultiplier || 1;
-        
-        // Calculer la production totale
-        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * this.dt).toFixed(10));
-        
-        // Mettre à jour la valeur du potentiel
+        const potentielProduction = Number((gen1ForPotentiel.count * baseProduction * milestoneBonus * antiparticleMultiplier * this.dt).toFixed(10));
         potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
 
         if (this.debug) {
           console.log('Production Potentiel:', {
-            count: gen1.count,
+            count: gen1ForPotentiel.count,
             baseProduction,
             milestoneBonus,
             antiparticleMultiplier,
