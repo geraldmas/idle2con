@@ -119,27 +119,7 @@ import Prestige from './components/Prestige.vue';
 import { ParticleStorage } from './services/ParticleStorage';
 import { SaveService } from './services/SaveService';
 import { PrestigeService } from './services/PrestigeService';
-
-// Créer un bus d'événements global
-export const eventBus = {
-    listeners: new Map(),
-    emit(event, data) {
-        if (this.listeners.has(event)) {
-            this.listeners.get(event).forEach(callback => callback(data));
-        }
-    },
-    on(event, callback) {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, new Set());
-        }
-        this.listeners.get(event).add(callback);
-    },
-    off(event, callback) {
-        if (this.listeners.has(event)) {
-            this.listeners.get(event).delete(callback);
-        }
-    }
-};
+import { formatNumber } from './utils/format';
 
 export default {
   name: 'App',
@@ -187,38 +167,9 @@ export default {
     let updateInterval;
     let saveInterval;
 
-    const formatNumber = (num, decimals = 2) => {
-      if (num === undefined || num === null) return '0';
-      // Utiliser toLocaleString pour une meilleure séparation des milliers si nécessaire,
-      // ou conserver la logique K/M existante. Pour la consistance avec le reste du code :
-      if (Math.abs(num) >= 1000000) {
-        return (num / 1000000).toFixed(decimals) + 'M';
-      }
-      if (Math.abs(num) >= 1000) {
-        return (num / 1000).toFixed(decimals) + 'K';
-      }
-      // Pour les très petits nombres, utiliser la notation scientifique ou plus de décimales
-      if (Math.abs(num) < 0.001 && num !== 0) {
-        return num.toExponential(decimals > 0 ? decimals -1 : 2);
-      }
-      return num.toFixed(decimals);
-    };
-
     const toggleDebug = () => {
       isDebugEnabled.value = !isDebugEnabled.value;
       TickService.setDebug(isDebugEnabled.value);
-    };
-
-    const buyGenerator = (index) => {
-      // Cette fonction n'est plus utilisée car la logique d'achat est déplacée dans handleBuyGenerator
-      // const generator = gameState.generators[index];
-      // const states = gameState.resources.get('États');
-      // const purchaseSuccessful = states && generator.purchase(states, gameState.generators);
-      // if (purchaseSuccessful) {
-      //     console.log(`Achat de ${generator.name} réussi.`);
-      // } else {
-      //     console.log(`Achat de ${generator.name} échoué.`);
-      // }
     };
 
     // Nouvelle méthode pour gérer l'événement 'buy' du composant Generator
@@ -266,6 +217,25 @@ export default {
       initialGenerators[1].name = 'Générateur Quantique II';
       initialGenerators[2].name = 'Générateur Quantique III';
       initialGenerators[3].name = 'Générateur Quantique IV';
+
+      // Set production outputs for Gen > 1
+      // Gen2 produces Gen1
+      const gen2Instance = initialGenerators.find(gen => gen.rank === 2);
+      if (gen2Instance) {
+        gen2Instance.setProductionOutput(1, 0.1); // Produces Rank 1 at 0.1/sec
+      }
+
+      // Gen3 produces Gen2
+      const gen3Instance = initialGenerators.find(gen => gen.rank === 3);
+      if (gen3Instance) {
+        gen3Instance.setProductionOutput(2, 0.1); // Produces Rank 2 at 0.1/sec
+      }
+
+      // Gen4 produces Gen3
+      const gen4Instance = initialGenerators.find(gen => gen.rank === 4);
+      if (gen4Instance) {
+        gen4Instance.setProductionOutput(3, 0.1); // Produces Rank 3 at 0.1/sec
+      }
 
       // Configurer les conditions de déblocage
       initialGenerators[1].setUnlockRequirement('10 Gén. I');
@@ -385,37 +355,6 @@ export default {
         }
       });
 
-      // Mettre à jour le Potentiel
-      const potentielResource = gameState.resources.get('Potentiel');
-      const gen1 = gameState.generators.find(gen => gen.rank === 1);
-      if (potentielResource && gen1) {
-        // Mettre à jour le nombre de générateurs dans la ressource Potentiel
-        potentielResource.setGenerators(gen1.count);
-        
-        // Calculer la production de potentiel
-        const baseProduction = 1/32; // Production de base par générateur
-        const milestoneBonus = gen1.getMilestoneBonus();
-        const antiparticleMultiplier = gameState.antiparticleEffects?.generatorProductionMultiplier || 1;
-        
-        // Calculer la production totale
-        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * TickService.getDt()).toFixed(10));
-        
-        // Mettre à jour la valeur du potentiel
-        potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
-
-        if (isDebugEnabled.value) {
-          console.log('Production Potentiel:', {
-            count: gen1.count,
-            baseProduction,
-            milestoneBonus,
-            antiparticleMultiplier,
-            dt: TickService.getDt(),
-            production: potentielProduction,
-            total: potentielResource.value
-          });
-        }
-      }
-
       // Calculer et stocker les effets des antiparticules
       gameState.antiparticleEffects = prestigeService.calculateAntiparticleEffects(gameState);
     };
@@ -472,7 +411,7 @@ export default {
       particleStorage.addParticle(data.particle);
       
       // Émettre un événement pour notifier du changement
-      eventBus.emit('particles-changed', gameState.particles);
+      // eventBus.emit('particles-changed', gameState.particles); // Removed as per task
     };
 
     const handleParticleFusion = (data) => {
@@ -488,42 +427,39 @@ export default {
           console.log('Particule fusionnée ajoutée:', newParticle);
           
           // Émettre un événement pour notifier du changement
-          eventBus.emit('particles-changed', gameState.particles);
+          // eventBus.emit('particles-changed', gameState.particles); // Removed as per task
         }
       } catch (error) {
         console.error('Erreur lors de la fusion:', error);
       }
     };
 
-    const getTotalDtMultiplier = () => {
+    const getTotalDtMultiplier = computed(() => {
       return gameState.particles.reduce((total, particle) => {
-        // S'assurer que particle et getDtMultiplier existent
         if (particle && typeof particle.getDtMultiplier === 'function') {
-             return total * (1 + particle.getDtMultiplier());
+          return total * (1 + particle.getDtMultiplier());
         }
         return total;
       }, 1);
-    };
+    });
 
-    const getTotalGeneratorBonus = () => {
+    const getTotalGeneratorBonus = computed(() => {
       return gameState.particles.reduce((total, particle) => {
-         // S'assurer que particle et getGeneratorBonus existent
-         if (particle && typeof particle.getGeneratorBonus === 'function') {
-             return total * (1 + particle.getGeneratorBonus());
-         }
+        if (particle && typeof particle.getGeneratorBonus === 'function') {
+          return total * (1 + particle.getGeneratorBonus());
+        }
         return total;
       }, 1);
-    };
+    });
 
-    const getTotalCostReduction = () => {
+    const getTotalCostReduction = computed(() => {
       return gameState.particles.reduce((total, particle) => {
-         // S'assurer que particle et getCostReduction existent
         if (particle && typeof particle.getCostReduction === 'function') {
-             return total * (1 - particle.getCostReduction());
+          return total * (1 - particle.getCostReduction());
         }
         return total;
       }, 1);
-    };
+    });
 
     // Fournir l'état du jeu aux composants enfants
     provide('gameState', gameState);

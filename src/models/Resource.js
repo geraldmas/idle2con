@@ -13,20 +13,12 @@ export default class Resource {
   // Met à jour la valeur selon la formule p(t+dt) = p(t) + n*a*dt
   // Prend maintenant en compte les effets des antiparticules
   update(dt, antiparticleEffects) {
-    // Appliquer l'exposant de dt provenant des antiparticules
-    const adjustedDt = Math.pow(dt, antiparticleEffects?.dtExponent || 1);
-    
-    // Appliquer le multiplicateur de production global provenant des antiparticules
-    const productionMultiplier = antiparticleEffects?.generatorProductionMultiplier || 1;
-    
-    // Utiliser des calculs plus précis pour la production
-    const production = (this.generators * this.baseProduction * adjustedDt * productionMultiplier);
-    this.value = Number((this.value + production).toFixed(10)); // Limiter à 10 décimales pour éviter les erreurs d'arrondi
-
-    // Mettre à jour le prochain palier d'état pour l'affichage si la ressource est 'États'
-    if (this.name === 'États') {
-      this.updateNextStateMilestone(this.value, antiparticleEffects);
-    }
+    // The core logic for "Potentiel" production is handled in TickService.
+    // The core logic for "États" accumulation (checkStateMilestone) and 
+    // next milestone update (updateNextStateMilestone) is also handled in TickService
+    // after Potentiel has been updated for the tick.
+    // Therefore, this method might become empty or be removed in a later step if no other
+    // resource type uses it. For now, it will be empty.
   }
 
   // Vérifie si un palier d'état est atteint et ajoute un état si c'est le cas
@@ -55,20 +47,6 @@ export default class Resource {
   removeState(stateId) {
     this.states.delete(stateId);
     this.recalculatePotential();
-  }
-
-  // Recalcule le potentiel en fonction des états
-  recalculatePotential() {
-    let basePotential = 0;
-    this.states.forEach(state => {
-      basePotential += state.effect;
-    });
-    this.potential = basePotential;
-
-     // Mettre à jour le prochain palier d'état si la ressource est 'États'
-    if (this.name === 'États') {
-      this.updateNextStateMilestone();
-    }
   }
 
   // Modifie la valeur de la ressource
