@@ -1,5 +1,5 @@
 import { ParticleStorage } from './ParticleStorage';
-import GameState from '../models/GameState';
+import { formatNumber } from '../utils/format';
 
 export class PrestigeService {
     constructor() {
@@ -10,7 +10,6 @@ export class PrestigeService {
         this.prestigeThreshold = 1000; // Seuil de prestige modulable
         this.antipotentialBaseCost = 3; // Coût de base pour observer une antiparticule
         this.antipotentialGrowthRate = 1.1; // Taux de croissance du coût
-        this.gameState = new GameState();
     }
 
     canPrestige(gameState) {
@@ -202,23 +201,6 @@ export class PrestigeService {
 
     isSupersymmetricParticlesUnlocked(gameState) {
         return gameState?.supersymmetricParticlesUnlocked || false;
-    }
-
-    // Méthode utilitaire pour formater les nombres (peut rester statique ou être déplacée)
-    formatNumber(number) {
-        if (typeof number !== 'number') {
-            return '0';
-        }
-        if (number >= 1e9) {
-            return (number / 1e9).toFixed(2) + 'G';
-        }
-        if (number >= 1e6) {
-            return (number / 1e6).toFixed(2) + 'M';
-        }
-        if (number >= 1e3) {
-            return (number / 1e3).toFixed(2) + 'K';
-        }
-        return number.toFixed(2);
     }
 
     // Ajout d'une méthode reset si PrestigeService gère un état interne qui nécessite une réinitialisation
