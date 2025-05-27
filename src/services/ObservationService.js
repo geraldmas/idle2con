@@ -6,8 +6,9 @@ import { AntiElectron, AntiNeutrinoE, AntiQuarkUp, AntiQuarkDown } from '../mode
 import { PrestigeService } from './PrestigeService';
 
 export class ObservationService {
-    constructor() {
-        this.storage = new ParticleStorage();
+    constructor(particleStorage, gameState) { // Accept particleStorage and gameState
+        this.storage = particleStorage; // Use the passed instance
+        this.gameState = gameState; // Store gameState
         this.baseCost = 10; // Coût de base pour les particules normales en générateurs
         this.costGrowthRate = Math.pow(2, 1/20); // Taux de croissance du coût des particules normales
         this.observationCount = 0; // Compteur d'observations de particules normales
@@ -84,6 +85,12 @@ export class ObservationService {
             
             // Incrémenter le compteur d'observations de particules normales
             this.observationCount++;
+
+            // Grant "Points d'Observation"
+            const pointsObservationResource = this.gameState.resources.get("Points d'Observation");
+            if (pointsObservationResource) {
+                pointsObservationResource.modifyValue(1);
+            }
         }
 
         return { // Retourner l'objet observé et le coût payé

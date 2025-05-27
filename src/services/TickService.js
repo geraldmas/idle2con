@@ -71,6 +71,17 @@ class TickService {
     try {
       if (!this.isRunning || !this.gameState) return;
 
+      // Calculate totalParticleDtMultiplier from active particles
+      let totalParticleDtMultiplier = 1.0;
+      if (this.gameState && this.gameState.particleStorageInstance) {
+          const activeParticles = this.gameState.particleStorageInstance.getParticles(); // Assuming getParticles() returns all stored/active particles
+          if (activeParticles) {
+              for (const particle of activeParticles) {
+                  totalParticleDtMultiplier *= particle.getDtMultiplier();
+              }
+          }
+      }
+
       // Logs de débogage : afficher les compteurs de tous les générateurs à chaque tick
       if (this.debug) {
           let generatorCounts = 'Compteurs Générateurs: ';
@@ -147,7 +158,12 @@ class TickService {
         const antiparticleMultiplier = antiparticleEffects?.generatorProductionMultiplier || 1;
         
         // Calculer la production totale
-        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * this.dt).toFixed(10));
+        // existing antiparticleEffects.dtExponent logic
+        const currentDtExponent = antiparticleEffects?.dtExponent || 1;
+        // Apply the particle dtMultiplier to the base dt BEFORE exponentiation
+        const effectiveDt = Math.pow(this.dt * totalParticleDtMultiplier, currentDtExponent);
+        
+        const potentielProduction = Number((gen1.count * baseProduction * milestoneBonus * antiparticleMultiplier * effectiveDt).toFixed(10));
         
         // Mettre à jour la valeur du potentiel
         potentielResource.value = Number((potentielResource.value + potentielProduction).toFixed(10));
@@ -158,7 +174,10 @@ class TickService {
             baseProduction,
             milestoneBonus,
             antiparticleMultiplier,
-            dt: this.dt,
+            dt: this.dt, // Log original dt
+            totalParticleDtMultiplier, // Log particle multiplier
+            currentDtExponent, // Log exponent
+            effectiveDt, // Log effective Dt
             production: potentielProduction,
             total: potentielResource.value
           });

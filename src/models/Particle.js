@@ -22,7 +22,7 @@ export class Particle {
     }
 
     getDtMultiplier() {
-        return this.effect.dtMultiplier || 0;
+        return this.effect.dtMultiplier || 1.0;
     }
 
     getGeneratorBonus() {
